@@ -73,7 +73,7 @@ class IcebergSink(BatchSink):
         self.logger.info("Spark Running")
 
         # Create a Spark dataframe
-        headers = self.schema["properties"].keys()
+        headers = list(self.schema["properties"].keys())
         df = spark.createDataFrame(context["records"], headers)
 
         # Create a temp view of the dataframe so it can be selected via SQL
