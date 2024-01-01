@@ -7,7 +7,7 @@ def get_spark_conf(config: Dict):
     # Spark packages
     spark_pacakges = (
         "spark.jars.packages",
-        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.13-1.4.2,org.projectnessie.nessie-integrations:nessie-spark-extensions-3.5_2.12:0.74.0,software.amazon.awssdk:bundle:2.21.41,software.amazon.awssdk:url-connection-client:2.21.41",
+        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.13:1.4.2,org.projectnessie.nessie-integrations:nessie-spark-extensions-3.5_2.12:0.74.0,software.amazon.awssdk:bundle:2.21.41,software.amazon.awssdk:url-connection-client:2.21.41",
     )
 
     # SQL Extensions

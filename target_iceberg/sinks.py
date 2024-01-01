@@ -65,13 +65,12 @@ class IcebergSink(BatchSink):
         Required script for build:
             `venv-pack -p ./.venv`
         """
-        print("TESTING LOGGING")
-        print(f"self.config={self.config}")
+        self.logger.info(f"self.config={self.config}")
         
         # Start Spark Session
         spark_conf = get_spark_conf(config=self.config)
         spark = SparkSession.builder.config(conf=spark_conf).getOrCreate()
-        print("Spark Running")
+        self.logger.info("Spark Running")
 
         # Create a Spark dataframe
         headers = self.schema["properties"].keys()
