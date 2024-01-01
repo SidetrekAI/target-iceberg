@@ -66,7 +66,7 @@ class IcebergSink(BatchSink):
             `venv-pack -p ./.venv`
         """
         # Start Spark Session
-        spark_conf = get_spark_conf(self.config)
+        spark_conf = get_spark_conf(config=self.config)
         spark = SparkSession.builder.config(conf=spark_conf).getOrCreate()
         print("Spark Running")
 
@@ -97,4 +97,4 @@ class IcebergSink(BatchSink):
         )
         
         # Submit the spark job
-        submit_spark_job(self.config)
+        submit_spark_job(config=self.config)

@@ -1,8 +1,9 @@
+from typing import Dict
 import pyspark
 import requests
 
 
-def get_spark_conf(config):
+def get_spark_conf(config: Dict):
     # Spark packages
     spark_pacakges = (
         "spark.jars.packages",
@@ -49,7 +50,7 @@ def get_spark_conf(config):
     )
 
 
-def submit_spark_job(config):
+def submit_spark_job(config: Dict):
     """
     For this to work properly, run `poetry build` before pushing to the repo.
     This will package up external dependencies as .whl and .tar.gz files in the dist/ directory, which can be used in spark-submit via --archives flag.
