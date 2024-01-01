@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from singer_sdk import PluginBase
 from singer_sdk.sinks import BatchSink
 from pyspark.sql import SparkSession
-from configs import spark_conf
+from target_iceberg.spark import get_spark_conf, submit_spark_job
 
 
 class IcebergSink(BatchSink):
@@ -26,13 +26,6 @@ class IcebergSink(BatchSink):
             stream_name=stream_name,
             key_properties=key_properties,
         )
-
-        # Accessing the properties from the target's config
-        self.aws_region = self.config.get("aws_region")
-        self.aws_access_key_id = self.config.get("aws_access_key_id")
-        self.aws_secret_access_key = self.config.get("aws_secret_access_key")
-        self.partition_by = self.config.get("partition_by", [])
-        self.table_name = self.config.get("table_name", "default")
 
     # def start_batch(self, context: dict) -> None:
     #     """Start a batch.
@@ -73,6 +66,7 @@ class IcebergSink(BatchSink):
             `venv-pack -p ./.venv`
         """
         # Start Spark Session
+        spark_conf = get_spark_conf(self.config)
         spark = SparkSession.builder.config(conf=spark_conf).getOrCreate()
         print("Spark Running")
 
@@ -100,4 +94,7 @@ class IcebergSink(BatchSink):
             f"""MERGE INTO nessie.{self.table_name} t USING (SELECT * FROM records_temp_view) u ON t.{unique_col} = u.{unique_col}
                 WHEN MATCHED THEN UPDATE SET *
                 WHEN NOT MATCHED THEN INSERT *"""
-        ).show()
+        )
+        
+        # Submit the spark job
+        submit_spark_job(self.config)

@@ -20,11 +20,20 @@ class TargetIceberg(Target):
         th.Property("aws_secret_access_key", th.StringType),
         th.Property("aws_session_token", th.StringType),
         th.Property("aws_profile", th.StringType),
-        th.Property("s3_bucket", th.StringType, required=True),
-        th.Property("s3_key_prefix", th.StringType),
+        th.Property("s3_uri", th.StringType, required=True),  # e.g. http://minio:9000
+        th.Property("s3_bucket", th.StringType, required=True),  # e.g. my-bucket
+        th.Property("s3_key_prefix", th.StringType),  # e.g. my-prefix
+        th.Property(
+            "nessie_uri", th.StringType, required=True
+        ),  # e.g. http://nessie:19120/api/v1
+        th.Property(
+            "spark_master_uri", th.StringType, required=True
+        ),  # e.g. spark://spark-master:7077
+        th.Property(
+            "spark_master_api_uri", th.StringType, required=True
+        ),  # e.g. http://spark-master:9090
         th.Property("table_name", th.StringType),
         th.Property("partition_by", th.StringType),
-
     ).to_dict()
 
     default_sink_class = IcebergSink
