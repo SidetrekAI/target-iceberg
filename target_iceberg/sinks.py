@@ -66,6 +66,7 @@ class IcebergSink(BatchSink):
             `venv-pack -p ./.venv`
         """
         print("TESTING LOGGING")
+        print(f"self.config={self.config}")
         
         # Start Spark Session
         spark_conf = get_spark_conf(config=self.config)
