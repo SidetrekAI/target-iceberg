@@ -18,13 +18,13 @@ def get_spark_conf(config: Dict):
 
     # Configuring Catalog
     nessie_warehouse = (
-        f"s3a://{config.s3_bucket}"
+        f"s3a://{config.get('s3_bucket')}"
         if not config.get("s3_key_prefix")
-        else f"s3a://{config.s3_bucket}/{config.s3_key_prefix}"
+        else f"s3a://{config.get('s3_bucket')}/{config.get('s3_key_prefix')}"
     )
     catalog_config = [
         ("spark.sql.catalog.nessie", "org.apache.iceberg.spark.SparkCatalog"),
-        ("spark.sql.catalog.nessie.uri", config.nessie_uri),
+        ("spark.sql.catalog.nessie.uri", config.get("nessie_uri")),
         ("spark.sql.catalog.nessie.ref", "main"),  # default branch,
         ("spark.sql.catalog.nessie.authentication.type", "NONE"),
         (
@@ -32,20 +32,20 @@ def get_spark_conf(config: Dict):
             "org.apache.iceberg.nessie.NessieCatalog",
         ),
         ("spark.sql.catalog.nessie.warehouse", nessie_warehouse),
-        ("spark.sql.catalog.nessie.s3.endpoint", config.s3_uri),
+        ("spark.sql.catalog.nessie.s3.endpoint", config.get("s3_uri")),
         ("spark.sql.catalog.nessie.io-impl", "org.apache.iceberg.aws.s3.S3FileIO"),
     ]
 
     # S3/Minio credentials
     s3_config = [
-        ("spark.hadoop.fs.s3a.access.key", config.aws_access_key_id),
-        ("spark.hadoop.fs.s3a.secret.key", config.aws_secret_access_key),
+        ("spark.hadoop.fs.s3a.access.key", config.get("aws_access_key_id")),
+        ("spark.hadoop.fs.s3a.secret.key", config.get("aws_secret_access_key")),
     ]
 
     return (
         pyspark.SparkConf()
         .setAppName("test-iceberg")
-        .setMaster(config.spark_master_uri)
+        .setMaster(config.get("spark_master_uri"))
         .setAll([spark_pacakges, sql_extentions, *catalog_config, *s3_config])
     )
 
@@ -56,7 +56,7 @@ def submit_spark_job(config: Dict):
     This will package up external dependencies as .whl and .tar.gz files in the dist/ directory, which can be used in spark-submit via --archives flag.
     """
     requests.post(
-        url=config.spark_master_api_uri + "/v1/submissions/create",
+        url=config.get("spark_master_api_uri") + "/v1/submissions/create",
         headers={"Content-Type": "application/json;charset=UTF-8"},
         data={
             "clientSparkVersion": "3.5.0",
@@ -66,7 +66,7 @@ def submit_spark_job(config: Dict):
             "sparkProperties": {
                 "spark.app.name": "target-iceberg",
                 "spark.driver.supervise": "false",
-                "spark.master": config.spark_master_uri,
+                "spark.master": config.get("spark_master_uri"),
                 "spark.submit.deployMode": "cluster",
                 "spark.driver.cores": "2",
                 "spark.driver.memory": "2g",

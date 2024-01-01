@@ -65,6 +65,8 @@ class IcebergSink(BatchSink):
         Required script for build:
             `venv-pack -p ./.venv`
         """
+        print("TESTING LOGGING")
+        
         # Start Spark Session
         spark_conf = get_spark_conf(config=self.config)
         spark = SparkSession.builder.config(conf=spark_conf).getOrCreate()
