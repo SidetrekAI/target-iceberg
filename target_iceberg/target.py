@@ -27,6 +27,7 @@ class TargetIceberg(Target):
         th.Property("spark_master_uri", th.StringType, required=True),
         th.Property("spark_master_api_uri", th.StringType, required=True),
         th.Property("table_name", th.StringType),
+        th.Property("primary_key", th.StringType),
         th.Property("partition_by", th.ArrayType(th.StringType)),
     ).to_dict()
 

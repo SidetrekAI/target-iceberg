@@ -89,13 +89,12 @@ class IcebergSink(BatchSink):
         ).show()
 
         # Write the dataframe to the Iceberg table
-        print(self.key_properties)
-        unique_col = self.key_properties[0]
+        primary_key = self.key_properties[0]
         spark.sql(
-            f"""MERGE INTO nessie.{self.table_name} t USING (SELECT * FROM records_temp_view) u ON t.{unique_col} = u.{unique_col}
+            f"""MERGE INTO nessie.{self.table_name} t USING (SELECT * FROM records_temp_view) u ON t.{primary_key} = u.{primary_key}
                 WHEN MATCHED THEN UPDATE SET *
                 WHEN NOT MATCHED THEN INSERT *"""
         )
         
         # Submit the spark job
-        # submit_spark_job(self.config)
+        submit_spark_job(self.config)
