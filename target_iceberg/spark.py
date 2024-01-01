@@ -18,7 +18,7 @@ def get_spark_conf(config):
     # Configuring Catalog
     nessie_warehouse = (
         f"s3a://{config.s3_bucket}"
-        if not config.s3_key_prefix
+        if not config.get("s3_key_prefix")
         else f"s3a://{config.s3_bucket}/{config.s3_key_prefix}"
     )
     catalog_config = [

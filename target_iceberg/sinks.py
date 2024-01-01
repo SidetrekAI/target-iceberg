@@ -80,18 +80,18 @@ class IcebergSink(BatchSink):
         # Create an Iceberg table
         partition_clause = (
             ""
-            if not self.partition_by
-            else f"PARTITIONED BY ({', '.join(self.partition_by)})"
+            if not self.config.get("partition_by")
+            else f"PARTITIONED BY ({', '.join(self.config.partition_by)})"
         )
 
         spark.sql(
-            f"CREATE TABLE IF NOT EXISTS nessie.{self.table_name} USING iceberg {partition_clause}"
+            f"CREATE TABLE IF NOT EXISTS nessie.{self.config.table_name} USING iceberg {partition_clause}"
         ).show()
 
         # Write the dataframe to the Iceberg table
         primary_key = self.key_properties[0]
         spark.sql(
-            f"""MERGE INTO nessie.{self.table_name} t USING (SELECT * FROM records_temp_view) u ON t.{primary_key} = u.{primary_key}
+            f"""MERGE INTO nessie.{self.config.table_name} t USING (SELECT * FROM records_temp_view) u ON t.{primary_key} = u.{primary_key}
                 WHEN MATCHED THEN UPDATE SET *
                 WHEN NOT MATCHED THEN INSERT *"""
         )
