@@ -73,7 +73,6 @@ def submit_spark_job(config: Dict):
                 "spark.executor.cores": "2",
                 "spark.executor.memory": "2g",
                 "spark.eventLog.enabled": "false",
-                "spark.submit.files": "./target_iceberg/spark-defaults.conf",
                 "spark.submit.pyFiles": "./target_iceberg/*.py",
                 "spark.archives": "./dist/target_iceberg-*.tar.gz",
             },

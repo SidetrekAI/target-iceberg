@@ -96,7 +96,7 @@ class IcebergSink(BatchSink):
             f"""MERGE INTO nessie.{self.config.table_name} t USING (SELECT * FROM records_temp_view) u ON t.{primary_key} = u.{primary_key}
                 WHEN MATCHED THEN UPDATE SET *
                 WHEN NOT MATCHED THEN INSERT *"""
-        )
+        ).show()
         
         # Submit the spark job
         submit_spark_job(config=self.config)
