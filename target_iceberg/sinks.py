@@ -37,7 +37,6 @@ class IcebergSink(BatchSink):
         Args:
             context: Stream partition or context dictionary.
         """
-        self.logger.info(f"records sample={context['records'][0]}")
 
         # Create pyarrow df
         df = pa.Table.from_pylist(context["records"])
@@ -49,11 +48,14 @@ class IcebergSink(BatchSink):
         # Define a schema
         # json_schema: from singer tap - i.e. {"id": {"type": "integer"}, "updated_at": {"type": "string", "format": "date-time"}, ...}
         json_schema = self.schema["properties"]
+        self.logger.info(f"json_schema={json_schema}")
         table_schema = build_table_schema(json_schema)
 
         # Create a table
         table_name = self.stream_name
-        table = catalog.create_table(f"{catalog_name}.{table_name}", schema=table_schema)
+        table = catalog.create_table(
+            f"{catalog_name}.{table_name}", schema=table_schema
+        )
 
         # Add data to the table
         table.append(df)
