@@ -8,4 +8,5 @@
 config:
   add_record_metadata: true
 ```
+
 - IMPORTANT: ensure that aws credentials are set correctly (this target uses DynamoDB as a catalog)
