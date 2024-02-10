@@ -58,8 +58,6 @@ def singer_schema_to_pyiceberg_schema(self, singer_schema: dict) -> Schema:
             # Fallback to string
             return get_nested_field(StringType())
 
-        return ListType()
-
     def get_pyiceberg_fields_from_object(properties: dict, level: int = 0) -> list:
         fields = []
         field_idx = 1
@@ -107,6 +105,6 @@ def singer_schema_to_pyiceberg_schema(self, singer_schema: dict) -> Schema:
                 return fields.append(get_nested_field(StructType(*inner_fields)))
             else:
                 # Fallback to string
-                return StringType()
+                return fields.append(get_nested_field(StringType()))
 
     return Schema(*get_pyiceberg_fields_from_object(singer_schema["properties"]))
