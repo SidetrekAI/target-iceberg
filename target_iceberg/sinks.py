@@ -4,8 +4,11 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 from singer_sdk import PluginBase
 from singer_sdk.sinks import BatchSink
-from pyspark.sql import SparkSession
-from target_iceberg.spark import get_spark_conf, submit_spark_job
+import pyarrow as pa
+from pyiceberg.catalog import load_catalog
+
+from .iceberg import build_table_schema
+from .utils import singer_records_to_list
 
 
 class IcebergSink(BatchSink):
@@ -26,77 +29,33 @@ class IcebergSink(BatchSink):
             stream_name=stream_name,
             key_properties=key_properties,
         )
-
-    # def start_batch(self, context: dict) -> None:
-    #     """Start a batch.
-
-    #     Developers may optionally add additional markers to the `context` dict,
-    #     which is unique to this batch.
-
-    #     Args:
-    #         context: Stream partition or context dictionary.
-    #     """
-    #     # Sample:
-    #     # ------
-    #     # batch_key = context["batch_id"]
-    #     # context["file_path"] = f"{batch_key}.csv"
-
-    # def process_record(self, record: dict, context: dict) -> None:
-    #     """Process the record.
-
-    #     Developers may optionally read or write additional markers within the
-    #     passed `context` dict from the current batch.
-
-    #     Args:
-    #         record: Individual record in the stream.
-    #         context: Stream partition or context dictionary.
-    #     """
-    #     # Sample:
-    #     # ------
-    #     # with open(context["file_path"], "a") as csvfile:
-    #     #     csvfile.write(record)
+        self.stream_name = stream_name
+        self.schema = schema
 
     def process_batch(self, context: dict) -> None:
         """Write out any prepped records and return once fully written.
 
         Args:
             context: Stream partition or context dictionary.
-
-        Required script for build:
-            `venv-pack -p ./.venv`
         """
         self.logger.info(f"self.config={self.config}")
-        
-        # Start Spark Session
-        spark_conf = get_spark_conf(config=self.config)
-        spark = SparkSession.builder.config(conf=spark_conf).getOrCreate()
-        self.logger.info("Spark Running")
 
-        # Create a Spark dataframe
-        headers = list(self.schema["properties"].keys())
-        df = spark.createDataFrame(context["records"], headers)
+        # Create pyarrow df
+        pylist = singer_records_to_list(context["records"])
+        df = pa.Table.from_pylist(pylist)
 
-        # Create a temp view of the dataframe so it can be selected via SQL
-        df.createOrReplaceTempView("records_temp_view")
+        # Load the Iceberg catalog (see ~/.pyiceberg.yaml)
+        catalog_name = "default"
+        catalog = load_catalog(catalog_name)
 
-        # Create an Iceberg table
-        partition_clause = (
-            ""
-            if not self.config.get("partition_by")
-            else f"PARTITIONED BY ({', '.join(self.config.partition_by)})"
-        )
+        # Define a schema
+        # json_schema: from singer tap - i.e. {"id": {"type": "integer"}, "updated_at": {"type": "string", "format": "date-time"}, ...}
+        json_schema = self.schema["properties"]
+        table_schema = build_table_schema(json_schema)
 
-        spark.sql(
-            f"CREATE TABLE IF NOT EXISTS nessie.{self.config.table_name} USING iceberg {partition_clause}"
-        ).show()
+        # Create a table
+        table_name = self.stream_name
+        table = catalog.create_table(f"{catalog_name}.{table_name}", schema=table_schema)
 
-        # Write the dataframe to the Iceberg table
-        primary_key = self.key_properties[0]
-        spark.sql(
-            f"""MERGE INTO nessie.{self.config.table_name} t USING (SELECT * FROM records_temp_view) u ON t.{primary_key} = u.{primary_key}
-                WHEN MATCHED THEN UPDATE SET *
-                WHEN NOT MATCHED THEN INSERT *"""
-        ).show()
-        
-        # Submit the spark job
-        submit_spark_job(config=self.config)
+        # Add data to the table
+        table.append(df)
