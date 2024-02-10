@@ -20,8 +20,8 @@ def json_schema_type_to_pyiceberg_type(json_schema_type_dict: dict) -> str:
         "string": StringType(),
         "number": FloatType(),
         "integer": IntegerType(),
-        "object": StructType(),
-        "array": ListType(),
+        "object": StringType(), # TODO
+        "array": StringType(), # TODO
         "boolean": BooleanType(),
         # "null": , # TODO
     }
