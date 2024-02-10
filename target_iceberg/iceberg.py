@@ -82,6 +82,7 @@ def singer_schema_to_pyiceberg_schema(self, singer_schema: dict) -> Schema:
                 elif format == "date-time":
                     return fields.append(get_nested_field(TimestampType()))
                 else:
+                    self.logger.info(f"field_name (StringType): {field_name}")
                     return fields.append(get_nested_field(StringType()))
             elif "integer" in type:
                 return fields.append(get_nested_field(IntegerType()))
@@ -107,8 +108,10 @@ def singer_schema_to_pyiceberg_schema(self, singer_schema: dict) -> Schema:
                 # Fallback to string
                 return fields.append(get_nested_field(StringType()))
 
+        self.logger.info(f"fields: {fields}")
         return fields
 
+    self.logger.info(f"singer_schema properties: {singer_schema["properties"]}")
     schema_fields = get_pyiceberg_fields_from_object(singer_schema["properties"])
-    self.logger.info(f"Schema fields: {schema_fields}")
+    self.logger.info(f"schema_fields: {schema_fields}")
     return Schema(*schema_fields)
