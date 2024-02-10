@@ -8,7 +8,6 @@ import pyarrow as pa
 from pyiceberg.catalog import load_catalog
 
 from .iceberg import build_table_schema
-from .utils import singer_records_to_list
 
 
 class IcebergSink(BatchSink):
@@ -41,8 +40,7 @@ class IcebergSink(BatchSink):
         self.logger.info(f"records sample={context['records'][0]}")
 
         # Create pyarrow df
-        pylist = singer_records_to_list(context["records"])
-        df = pa.Table.from_pylist(pylist)
+        df = pa.Table.from_pylist(context["records"])
 
         # Load the Iceberg catalog (see ~/.pyiceberg.yaml)
         catalog_name = "default"
