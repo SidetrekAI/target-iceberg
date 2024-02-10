@@ -7,7 +7,7 @@ from singer_sdk.sinks import BatchSink
 import pyarrow as pa
 from pyiceberg.catalog import load_catalog
 
-from .iceberg import build_table_schema
+from .iceberg import singer_schema_to_pyiceberg_schema
 
 
 class IcebergSink(BatchSink):
@@ -46,10 +46,7 @@ class IcebergSink(BatchSink):
         catalog = load_catalog(catalog_name)
 
         # Define a schema
-        # json_schema: from singer tap - i.e. {"id": {"type": "integer"}, "updated_at": {"type": "string", "format": "date-time"}, ...}
-        json_schema = self.schema["properties"]
-        self.logger.info(f"json_schema={json_schema}")
-        table_schema = build_table_schema(json_schema)
+        table_schema = singer_schema_to_pyiceberg_schema(self, self.schema)
 
         # Create a table
         table_name = self.stream_name
