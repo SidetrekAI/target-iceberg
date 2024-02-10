@@ -15,20 +15,6 @@ class TargetIceberg(Target):
 
     config_jsonschema = th.PropertiesList(
         th.Property("add_record_metadata", th.BooleanType, default=False),
-        th.Property("aws_region", th.StringType, required=True),
-        th.Property("aws_access_key_id", th.StringType),
-        th.Property("aws_secret_access_key", th.StringType),
-        th.Property("aws_session_token", th.StringType),
-        th.Property("aws_profile", th.StringType),
-        th.Property("s3_uri", th.StringType, required=True),
-        th.Property("s3_bucket", th.StringType, required=True),  # e.g. my-bucket
-        th.Property("s3_key_prefix", th.StringType),  # e.g. my-prefix
-        th.Property("nessie_uri", th.StringType, required=True),
-        th.Property("spark_master_uri", th.StringType, required=True),
-        th.Property("spark_master_api_uri", th.StringType, required=True),
-        th.Property("table_name", th.StringType),
-        th.Property("primary_key", th.StringType),
-        th.Property("partition_by", th.ArrayType(th.StringType)),
     ).to_dict()
 
     default_sink_class = IcebergSink
