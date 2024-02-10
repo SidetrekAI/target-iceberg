@@ -109,4 +109,6 @@ def singer_schema_to_pyiceberg_schema(self, singer_schema: dict) -> Schema:
 
         return fields
 
-    return Schema(*get_pyiceberg_fields_from_object(singer_schema["properties"]))
+    schema_fields = get_pyiceberg_fields_from_object(singer_schema["properties"])
+    self.logger.info(f"Schema fields: {schema_fields}")
+    return Schema(*schema_fields)
