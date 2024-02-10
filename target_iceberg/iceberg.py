@@ -13,43 +13,100 @@ from pyiceberg.types import (
 )
 
 
-def json_schema_type_to_pyiceberg_type(json_schema_type_dict: dict) -> str:
-    """Convert singer tap json schema type to pyiceberg type."""
+def singer_schema_to_pyiceberg_schema(self, singer_schema: dict) -> Schema:
+    """Convert singer tap json schema to pyiceberg schema."""
 
-    json_schema_type_to_pyiceberg_type_map = {
-        "string": StringType(),
-        "number": FloatType(),
-        "integer": IntegerType(),
-        "object": StringType(), # TODO
-        "array": StringType(), # TODO
-        "boolean": BooleanType(),
-        # "null": , # TODO
-    }
+    def get_pyiceberg_fields_from_array(
+        field_idx: int, field_name: str, items: dict, level: int = 0
+    ) -> list:
+        type = items.get("type")
 
-    type = json_schema_type_dict.get("type")
-    format = json_schema_type_dict.get("format", None)
+        def get_nested_field(_field_type, required=False):
+            return NestedField(
+                field_id=field_idx,
+                name=field_name,
+                field_type=_field_type,
+                required=required,
+            )
 
-    if type == "string" and format == "time":
-        return TimeType()
-    if type == "string" and format == "date":
-        return DateType()
-    if type == "string" and format == "date-time":
-        return TimestampType()
-    else:
-        return json_schema_type_to_pyiceberg_type_map[type]
+        if "string" in type:
+            if format == "time":
+                return get_nested_field(TimeType())
+            elif format == "date":
+                return get_nested_field(DateType())
+            elif format == "date-time":
+                return get_nested_field(TimestampType())
+            else:
+                return get_nested_field(StringType())
+        elif "integer" in type:
+            return get_nested_field(IntegerType())
+        elif "number" in type:
+            return get_nested_field(FloatType())
+        elif "boolean" in type:
+            return get_nested_field(BooleanType())
+        elif "array" in type:
+            inner_fields = get_pyiceberg_fields_from_array(
+                field_idx, field_name, items.get("items"), level
+            )
+            return get_nested_field(ListType(*inner_fields))
+        elif "object" in type:
+            inner_fields = get_pyiceberg_fields_from_object(
+                items.get("properties"), level + 1
+            )
+            return get_nested_field(StructType(*inner_fields))
+        else:
+            # Fallback to string
+            return get_nested_field(StringType())
 
+        return ListType()
 
-def build_table_schema(json_schema: dict):
-    col_idx = 1
-    cols = []
+    def get_pyiceberg_fields_from_object(properties: dict, level: int = 0) -> list:
+        fields = []
+        field_idx = 1
+        for field_name, val in properties.items():
+            field_idx += 1
+            type = val.get("type")  # this is a `list`!
+            format = val.get("format")
 
-    for k, v in json_schema.items():
-        col_idx += 1
-        col = NestedField(
-            col_idx, k, json_schema_type_to_pyiceberg_type(v), required=False
-        )
-        cols.append(col)
+            def get_nested_field(_field_type, required=False):
+                return NestedField(
+                    field_id=field_idx,
+                    name=field_name,
+                    field_type=_field_type,
+                    required=required,
+                )
 
-    pyiceberg_schema = Schema(*cols)
+            if "string" in type:
+                if format == "time":
+                    return fields.append(get_nested_field(TimeType()))
+                elif format == "date":
+                    return fields.append(get_nested_field(DateType()))
+                elif format == "date-time":
+                    return fields.append(get_nested_field(TimestampType()))
+                else:
+                    return fields.append(get_nested_field(StringType()))
+            elif "integer" in type:
+                return fields.append(get_nested_field(IntegerType()))
+            elif "number" in type:
+                return fields.append(get_nested_field(FloatType()))
+            elif "boolean" in type:
+                return fields.append(get_nested_field(BooleanType()))
+            elif "array" in type:
+                items = val.get("items")
+                if items:
+                    inner_fields = get_pyiceberg_fields_from_array(
+                        field_idx, field_name, items, level
+                    )
+                else:
+                    inner_fields = []
+                return fields.append(get_nested_field(ListType(*inner_fields)))
+            elif "object" in type:
+                inner_fields = get_pyiceberg_fields_from_object(
+                    val.get("properties"), level + 1
+                )
+                return fields.append(get_nested_field(StructType(*inner_fields)))
+            else:
+                # Fallback to string
+                return StringType()
 
-    return pyiceberg_schema
+    return Schema(*get_pyiceberg_fields_from_object(singer_schema["properties"]))
