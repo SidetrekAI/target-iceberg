@@ -38,7 +38,7 @@ class IcebergSink(BatchSink):
         Args:
             context: Stream partition or context dictionary.
         """
-        self.logger.info(f"self.config={self.config}")
+        self.logger.info(f"records sample={context["records"][0]}")
 
         # Create pyarrow df
         pylist = singer_records_to_list(context["records"])

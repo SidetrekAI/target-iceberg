@@ -1,4 +1,3 @@
 catalog:
   default:
-    type: dynamodb
-    table-name: iceberg
+    uri: ${ICEBERG_REST_CATALOG_URI}
