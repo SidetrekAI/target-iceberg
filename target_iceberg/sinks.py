@@ -6,6 +6,7 @@ from singer_sdk import PluginBase
 from singer_sdk.sinks import BatchSink
 import pyarrow as pa
 from pyiceberg.catalog import load_catalog
+from pyiceberg.exceptions import NoSuchTableError
 from requests import HTTPError
 
 from .iceberg import singer_schema_to_pyiceberg_schema
@@ -64,12 +65,11 @@ class IcebergSink(BatchSink):
             table = catalog.load_table(table_identifier)
             
             # TODO: Handle schema evolution - compare existing table schema with singer schema (converted to pyiceberg schema)
-        except HTTPError as e:
-            if e.response.status_code == 404:
-                # Table doesn't exist, so create it
-                table_schema = singer_schema_to_pyiceberg_schema(self, self.schema)
-                self.logger.info(f"Creating table {table_identifier}")
-                table = catalog.create_table(table_identifier, schema=table_schema)
+        except NoSuchTableError:
+            # Table doesn't exist, so create it
+            table_schema = singer_schema_to_pyiceberg_schema(self, self.schema)
+            self.logger.info(f"Creating table {table_identifier}")
+            table = catalog.create_table(table_identifier, schema=table_schema)
 
         # Add data to the table
         table.append(df)
