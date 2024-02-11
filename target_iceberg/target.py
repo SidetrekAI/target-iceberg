@@ -16,10 +16,16 @@ class TargetIceberg(Target):
     config_jsonschema = th.PropertiesList(
         th.Property("add_record_metadata", th.BooleanType, default=False),
         th.Property(
-            "pyiceberg_catalog_name",
+            "iceberg_catalog_name",
             th.StringType,
             required=True,
-            description="Name of the pyiceberg REST catalog",
+            description="Name of the Iceberg catalog",
+        ),
+        th.Property(
+            "iceberg_catalog_namespace_name",
+            th.StringType,
+            required=True,
+            description="Name of the Iceberg catalog namespace",
         ),
     ).to_dict()
 

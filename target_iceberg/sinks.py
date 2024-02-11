@@ -46,13 +46,15 @@ class IcebergSink(BatchSink):
         #   - See: https://py.iceberg.apache.org/configuration/)
         catalog_name = self.config.get("iceberg_catalog_name")
         catalog = load_catalog(catalog_name)
-        catalog.create_tables() # in case the catalog was not initialized
+        
+        ns_name = self.config.get("iceberg_catalog_namespace_name")
+        catalog.create_namespace(ns_name)
 
         # Create a table
         table_name = self.stream_name
         table_schema = singer_schema_to_pyiceberg_schema(self, self.schema)
         table = catalog.create_table(
-            f"{catalog_name}.{table_name}", schema=table_schema
+            f"{ns_name}.{table_name}", schema=table_schema
         )
 
         # Add data to the table
