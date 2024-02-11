@@ -6,6 +6,7 @@ from singer_sdk import PluginBase
 from singer_sdk.sinks import BatchSink
 import pyarrow as pa
 from pyiceberg.catalog import load_catalog
+from requests import HTTPError
 
 from .iceberg import singer_schema_to_pyiceberg_schema
 
@@ -43,7 +44,7 @@ class IcebergSink(BatchSink):
 
         # Load the Iceberg catalog
         # IMPORTANT: Make sure pyiceberg catalog env variables are set in the host machine - i.e. PYICEBERG_CATALOG__DEFAULT__URI, etc
-        #   - See: https://py.iceberg.apache.org/configuration/)
+        #   - For more details, see: https://py.iceberg.apache.org/configuration/)
         catalog_name = self.config.get("iceberg_catalog_name")
         catalog = load_catalog(catalog_name)
 
@@ -58,17 +59,17 @@ class IcebergSink(BatchSink):
         table_name = self.stream_name
         table_identifier = f"{catalog_name}.{ns_name}.{table_name}"
         self.logger.info(f"table_id={table_identifier}")
-        table = catalog.load_table(table_identifier)
-        self.logger.info(f"table={table}")
 
-        if table is None:
-            table_schema = singer_schema_to_pyiceberg_schema(self, self.schema)
-            self.logger.info(f"Creating table {table_identifier}")
-            table = catalog.create_table(table_identifier, schema=table_schema)
-        else:
-            self.logger.info(
-                f"Table {catalog_name}.{ns_name}.{table_name} already exists"
-            )
+        try:
+            table = catalog.load_table(table_identifier)
+            
+            # TODO: Handle schema evolution - compare existing table schema with singer schema (converted to pyiceberg schema)
+        except HTTPError as e:
+            if e.response.status_code == 404:
+                # Table doesn't exist, so create it
+                table_schema = singer_schema_to_pyiceberg_schema(self, self.schema)
+                self.logger.info(f"Creating table {table_identifier}")
+                table = catalog.create_table(table_identifier, schema=table_schema)
 
         # Add data to the table
         table.append(df)
