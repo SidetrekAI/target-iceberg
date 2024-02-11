@@ -54,7 +54,7 @@ class IcebergSink(BatchSink):
         table_name = self.stream_name
         table_schema = singer_schema_to_pyiceberg_schema(self, self.schema)
         table = catalog.create_table(
-            f"{ns_name}.{table_name}", schema=table_schema
+            f"{catalog_name}.{ns_name}.{table_name}", schema=table_schema
         )
 
         # Add data to the table
