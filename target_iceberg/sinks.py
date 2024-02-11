@@ -54,7 +54,7 @@ class IcebergSink(BatchSink):
         try:
             catalog.create_namespace(ns_name)
         except NamespaceAlreadyExistsError:
-            self.logger.info(f"Namespace {ns_name} already exists")
+            self.logger.info(f"Namespace '{ns_name}' already exists")
 
         # Create a table if it doesn't exist
         table_name = self.stream_name
@@ -63,10 +63,10 @@ class IcebergSink(BatchSink):
 
         try:
             table = catalog.load_table(table_id)
+            self.logger.info(f"Table '{table_id}' already exists")
 
             # TODO: Handle schema evolution - compare existing table schema with singer schema (converted to pyiceberg schema)
         except NoSuchTableError as e:
-            self.logger.info(f"NoSuchTableError={e}")
             # Table doesn't exist, so create it
             table_schema = singer_schema_to_pyiceberg_schema(self, self.schema)
             self.logger.info(f"Creating table {table_id}")
