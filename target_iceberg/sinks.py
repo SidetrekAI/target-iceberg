@@ -62,7 +62,7 @@ class IcebergSink(BatchSink):
 
         # Create a table if it doesn't exist
         table_name = self.stream_name
-        table_id = f"{catalog_name}.{ns_name}.{table_name}"
+        table_id = f"{ns_name}.{table_name}"
 
         try:
             table = catalog.load_table(table_id)
