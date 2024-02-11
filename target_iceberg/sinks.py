@@ -47,19 +47,26 @@ class IcebergSink(BatchSink):
         catalog_name = self.config.get("iceberg_catalog_name")
         catalog = load_catalog(catalog_name)
 
+        # Create a namespace if it doesn't exist
         ns_name = self.config.get("iceberg_catalog_namespace_name")
         nss = catalog.list_namespaces()
         ns_names = [n[0] for n in nss]
         if ns_name not in ns_names:
             catalog.create_namespace(ns_name)
 
-        # Create a table
+        # Create a table if it doesn't exist
         table_name = self.stream_name
-        table_schema = singer_schema_to_pyiceberg_schema(self, self.schema)
-        
         table_identifier = f"{catalog_name}.{ns_name}.{table_name}"
-        self.logger.info(f"Creating table {table_identifier} with schema {table_schema}")
-        table = catalog.create_table(identifier=table_identifier, schema=table_schema)
+        table = catalog.load_table(table_identifier)
+
+        if table is None:
+            table_schema = singer_schema_to_pyiceberg_schema(self, self.schema)
+            self.logger.info(f"Creating table {table_identifier}")
+            table = catalog.create_table(table_identifier, schema=table_schema)
+        else:
+            self.logger.info(
+                f"Table {catalog_name}.{ns_name}.{table_name} already exists"
+            )
 
         # Add data to the table
         table.append(df)
