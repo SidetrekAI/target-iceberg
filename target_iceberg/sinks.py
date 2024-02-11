@@ -48,7 +48,10 @@ class IcebergSink(BatchSink):
         catalog = load_catalog(catalog_name)
         
         ns_name = self.config.get("iceberg_catalog_namespace_name")
-        catalog.create_namespace(ns_name)
+        ns = catalog.get_namespace(ns_name)
+        self.logger.info(f"Namespace: {ns}")
+        if ns is None:
+            catalog.create_namespace(ns_name)
 
         # Create a table
         table_name = self.stream_name
