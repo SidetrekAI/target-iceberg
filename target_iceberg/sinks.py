@@ -56,8 +56,10 @@ class IcebergSink(BatchSink):
 
         # Create a table if it doesn't exist
         table_name = self.stream_name
+        self.logger.info(f"table_id={table_identifier}")
         table_identifier = f"{catalog_name}.{ns_name}.{table_name}"
         table = catalog.load_table(table_identifier)
+        self.logger.info(f"table={table}")
 
         if table is None:
             table_schema = singer_schema_to_pyiceberg_schema(self, self.schema)
