@@ -49,7 +49,9 @@ class IcebergSink(BatchSink):
         
         ns_name = self.config.get("iceberg_catalog_namespace_name")
         nss = catalog.list_namespaces()
+        self.logger.info(f"Namespaces: {nss}")
         ns_names = [n[0] for n in nss]
+        self.logger.info(f"Namespace names: {ns_names}")        
         if ns_name not in ns_names:
             catalog.create_namespace(ns_name)
 
