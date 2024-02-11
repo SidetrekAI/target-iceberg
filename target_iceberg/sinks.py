@@ -56,8 +56,8 @@ class IcebergSink(BatchSink):
 
         # Create a table if it doesn't exist
         table_name = self.stream_name
-        self.logger.info(f"table_id={table_identifier}")
         table_identifier = f"{catalog_name}.{ns_name}.{table_name}"
+        self.logger.info(f"table_id={table_identifier}")
         table = catalog.load_table(table_identifier)
         self.logger.info(f"table={table}")
 
