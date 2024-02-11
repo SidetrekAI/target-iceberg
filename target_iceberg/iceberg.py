@@ -60,7 +60,7 @@ def singer_schema_to_pyiceberg_schema(self, singer_schema: dict) -> Schema:
 
     def get_pyiceberg_fields_from_object(properties: dict, level: int = 0) -> list:
         fields = []
-        field_idx = 1
+        field_idx = 0
         for field_name, val in properties.items():
             field_idx += 1
             type = val.get("type")  # this is a `list`!
@@ -109,7 +109,6 @@ def singer_schema_to_pyiceberg_schema(self, singer_schema: dict) -> Schema:
 
         return fields
 
-    self.logger.info(f"singer_schema properties: {singer_schema['properties']}")
     schema_fields = get_pyiceberg_fields_from_object(singer_schema["properties"])
-    self.logger.info(f"schema_fields: {schema_fields}")
+    # self.logger.info(f"schema_fields: {schema_fields}")
     return Schema(*schema_fields)
