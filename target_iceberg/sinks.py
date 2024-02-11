@@ -41,15 +41,16 @@ class IcebergSink(BatchSink):
         # Create pyarrow df
         df = pa.Table.from_pylist(context["records"])
 
-        # Load the Iceberg catalog (see ~/.pyiceberg.yaml)
-        catalog_name = "default"
+        # Load the Iceberg catalog
+        # IMPORTANT: Make sure pyiceberg catalog env variables are set in the host machine - i.e. PYICEBERG_CATALOG__DEFAULT__URI, etc
+        #   - See: https://py.iceberg.apache.org/configuration/)
+        catalog_name = self.config.get("iceberg_catalog_name")
         catalog = load_catalog(catalog_name)
-
-        # Define a schema
-        table_schema = singer_schema_to_pyiceberg_schema(self, self.schema)
+        catalog.create_tables() # in case the catalog was not initialized
 
         # Create a table
         table_name = self.stream_name
+        table_schema = singer_schema_to_pyiceberg_schema(self, self.schema)
         table = catalog.create_table(
             f"{catalog_name}.{table_name}", schema=table_schema
         )

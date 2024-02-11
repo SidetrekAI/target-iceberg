@@ -15,6 +15,12 @@ class TargetIceberg(Target):
 
     config_jsonschema = th.PropertiesList(
         th.Property("add_record_metadata", th.BooleanType, default=False),
+        th.Property(
+            "pyiceberg_catalog_name",
+            th.StringType,
+            required=True,
+            description="Name of the pyiceberg REST catalog",
+        ),
     ).to_dict()
 
     default_sink_class = IcebergSink
