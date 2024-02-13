@@ -1,114 +1,139 @@
-from pyiceberg.schema import Schema
-from pyiceberg.types import (
-    NestedField,
-    BooleanType,
-    StringType,
-    IntegerType,
-    FloatType,
-    DateType,
-    TimeType,
-    TimestampType,
-    StructType,
-    ListType,
-)
+from typing import List, Tuple, Union
+import pyarrow as pa
+import pyiceberg as pi
 
 
-def singer_schema_to_pyiceberg_schema(self, singer_schema: dict) -> Schema:
-    """Convert singer tap json schema to pyiceberg schema."""
+# Borrowed from https://github.com/crowemi/target-s3/blob/main/target_s3/formats/format_parquet.py
+def singer_to_pyarrow_schema(self, singer_schema: dict) -> pa.Schema:
+    """Convert singer tap json schema to pyarrow schema."""
 
-    def get_pyiceberg_fields_from_array(
-        field_idx: int, field_name: str, items: dict, level: int = 0
-    ) -> list:
+    def process_anyof_schema(anyOf: List) -> Tuple[List, Union[str, None]]:
+        """This function takes in original array of anyOf's schema detected
+        and reduces it to the detected schema, based on rules, right now
+        just detects whether it is string or not.
+        """
+        types, formats = [], []
+        for val in anyOf:
+            typ = val.get("type")
+            if val.get("format"):
+                formats.append(val["format"])
+            if type(typ) is not list:
+                types.append(typ)
+            else:
+                types.extend(typ)
+        types = set(types)
+        formats = list(set(formats))
+        ret_type = []
+        if "string" in types:
+            ret_type.append("string")
+        if "null" in types:
+            ret_type.append("null")
+        return ret_type, formats[0] if formats else None
+
+    def get_pyarrow_schema_from_array(items: dict, level: int = 0):
         type = items.get("type")
+        any_of_types = items.get("anyOf")
 
-        def get_nested_field(_field_type, required=False):
-            return NestedField(
-                field_id=field_idx,
-                name=field_name,
-                field_type=_field_type,
-                required=required,
-            )
+        if any_of_types:
+            self.logger.info("array with anyof type schema detected.")
+            type, _ = process_anyof_schema(anyOf=any_of_types)
 
         if "string" in type:
-            if format == "time":
-                return get_nested_field(TimeType())
-            elif format == "date":
-                return get_nested_field(DateType())
-            elif format == "date-time":
-                return get_nested_field(TimestampType())
-            else:
-                return get_nested_field(StringType())
+            return pa.string()
         elif "integer" in type:
-            return get_nested_field(IntegerType())
+            return pa.int64()
         elif "number" in type:
-            return get_nested_field(FloatType())
+            return pa.float64()
         elif "boolean" in type:
-            return get_nested_field(BooleanType())
+            return pa.bool_()
         elif "array" in type:
-            inner_fields = get_pyiceberg_fields_from_array(
-                field_idx, field_name, items.get("items"), level
+            return pa.list_(
+                get_pyarrow_schema_from_array(items=items.get("items"), level=level)
             )
-            return get_nested_field(ListType(*inner_fields))
         elif "object" in type:
-            inner_fields = get_pyiceberg_fields_from_object(
-                items.get("properties"), level + 1
-            )
-            return get_nested_field(StructType(*inner_fields))
-        else:
-            # Fallback to string
-            return get_nested_field(StringType())
-
-    def get_pyiceberg_fields_from_object(properties: dict, level: int = 0) -> list:
-        fields = []
-        field_idx = 0
-        for field_name, val in properties.items():
-            field_idx += 1
-            type = val.get("type")  # this is a `list`!
-            format = val.get("format")
-
-            def get_nested_field(_field_type, required=False):
-                return NestedField(
-                    field_id=field_idx,
-                    name=field_name,
-                    field_type=_field_type,
-                    required=required,
+            return pa.struct(
+                get_pyarrow_schema_from_object(
+                    properties=items.get("properties"), level=level + 1
                 )
+            )
+        else:
+            return pa.null()
 
-            if "string" in type:
-                if format == "time":
-                    fields.append(get_nested_field(TimeType()))
-                elif format == "date":
-                    fields.append(get_nested_field(DateType()))
-                elif format == "date-time":
-                    fields.append(get_nested_field(TimestampType()))
-                else:
-                    fields.append(get_nested_field(StringType()))
-            elif "integer" in type:
-                fields.append(get_nested_field(IntegerType()))
+    def get_pyarrow_schema_from_object(properties: dict, level: int = 0):
+        """
+        Returns schema for an object.
+        """
+        fields = []
+        for key, val in properties.items():
+            if "type" in val.keys():
+                type = val["type"]
+                format = val.get("format")
+            elif "anyOf" in val.keys():
+                type, format = process_anyof_schema(val["anyOf"])
+            else:
+                self.logger.warning("type information not given")
+                type = ["string", "null"]
+
+            if "integer" in type:
+                fields.append(pa.field(key, pa.int64()))
             elif "number" in type:
-                fields.append(get_nested_field(FloatType()))
+                fields.append(pa.field(key, pa.float64()))
             elif "boolean" in type:
-                fields.append(get_nested_field(BooleanType()))
+                fields.append(pa.field(key, pa.bool_()))
+            elif "string" in type:
+                if format and level == 0:
+                    # this is done to handle explicit datetime conversion
+                    # which happens only at level 1 of a record
+                    if format == "date":
+                        fields.append(pa.field(key, pa.date64()))
+                    elif format == "time":
+                        fields.append(pa.field(key, pa.time64()))
+                    else:
+                        fields.append(pa.field(key, pa.timestamp("s", tz="utc")))
+                else:
+                    fields.append(pa.field(key, pa.string()))
             elif "array" in type:
                 items = val.get("items")
                 if items:
-                    inner_fields = get_pyiceberg_fields_from_array(
-                        field_idx, field_name, items, level
-                    )
+                    item_type = get_pyarrow_schema_from_array(items=items, level=level)
+                    if item_type == pa.null():
+                        self.logger.warn(
+                            f"""key: {key} is defined as list of null, while this would be
+                                correct for list of all null but it is better to define
+                                exact item types for the list, if not null."""
+                        )
+                    fields.append(pa.field(key, pa.list_(item_type)))
                 else:
-                    inner_fields = []
-                fields.append(get_nested_field(ListType(*inner_fields)))
+                    self.logger.warn(
+                        f"""key: {key} is defined as list of null, while this would be
+                            correct for list of all null but it is better to define
+                            exact item types for the list, if not null."""
+                    )
+                    fields.append(pa.field(key, pa.list_(pa.null())))
             elif "object" in type:
-                inner_fields = get_pyiceberg_fields_from_object(
-                    val.get("properties"), level + 1
+                prop = val.get("properties")
+                inner_fields = get_pyarrow_schema_from_object(
+                    properties=prop, level=level + 1
                 )
-                fields.append(get_nested_field(StructType(*inner_fields)))
-            else:
-                # Fallback to string
-                fields.append(get_nested_field(StringType()))
+                if not inner_fields:
+                    self.logger.warn(
+                        f"""key: {key} has no fields defined, this may cause
+                            saving parquet failure as parquet doesn't support
+                            empty/null complex types [array, structs] """
+                    )
+                fields.append(pa.field(key, pa.struct(inner_fields)))
 
         return fields
 
-    schema_fields = get_pyiceberg_fields_from_object(singer_schema["properties"])
-    # self.logger.info(f"schema_fields: {schema_fields}")
-    return Schema(*schema_fields)
+    properties = singer_schema.get("properties")
+    pyarrow_schema = pa.schema(get_pyarrow_schema_from_object(properties=properties))
+
+    return pyarrow_schema
+
+
+def singer_to_pyiceberg_schema(self, singer_schema: dict) -> pi.schema.Schema:
+    """Convert singer tap json schema to pyiceberg schema via pyarrow schema."""
+    pyarrow_schema = singer_to_pyarrow_schema(self, singer_schema)
+    iceberg_schema = pi.io.pyarrow.pyarrow_to_schema(pyarrow_schema)
+    return iceberg_schema
+    

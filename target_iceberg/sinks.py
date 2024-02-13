@@ -11,7 +11,7 @@ from pyiceberg.exceptions import NamespaceAlreadyExistsError, NoSuchTableError
 from requests import HTTPError
 from pyarrow import fs
 
-from .iceberg import singer_schema_to_pyiceberg_schema
+from .iceberg import singer_to_pyiceberg_schema
 
 
 class IcebergSink(BatchSink):
@@ -90,7 +90,7 @@ class IcebergSink(BatchSink):
             # TODO: Handle schema evolution - compare existing table schema with singer schema (converted to pyiceberg schema)
         except NoSuchTableError as e:
             # Table doesn't exist, so create it
-            table_schema = singer_schema_to_pyiceberg_schema(self, self.schema)
+            table_schema = singer_to_pyiceberg_schema(self, self.schema)
             table = catalog.create_table(table_id, schema=table_schema)
             self.logger.info(f"Table '{table_id}' created")
 
