@@ -15,6 +15,18 @@ class TargetIceberg(Target):
 
     config_jsonschema = th.PropertiesList(
         th.Property("add_record_metadata", th.BooleanType, default=False),
+        th.Property( # temporary until pyiceberg fix is released
+            "s3_bucket",
+            th.StringType,
+            default="lakehouse",
+            description="Name of the s3 bucket where Iceberg catalog is stored",
+        ),
+        th.Property( # temporary until pyiceberg fix is released
+            "iceberg_rest_uri",
+            th.StringType,
+            required=True,
+            description="Name of the Iceberg catalog",
+        ),
         th.Property(
             "iceberg_catalog_name",
             th.StringType,

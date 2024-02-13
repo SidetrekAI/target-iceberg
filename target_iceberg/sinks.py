@@ -1,6 +1,7 @@
 """Iceberg target sink class, which handles writing streams."""
 
 from __future__ import annotations
+import os
 from typing import Dict, List, Optional
 from singer_sdk import PluginBase
 from singer_sdk.sinks import BatchSink
@@ -8,6 +9,7 @@ import pyarrow as pa
 from pyiceberg.catalog import load_catalog
 from pyiceberg.exceptions import NamespaceAlreadyExistsError, NoSuchTableError
 from requests import HTTPError
+from pyarrow import fs
 
 from .iceberg import singer_schema_to_pyiceberg_schema
 
@@ -46,8 +48,25 @@ class IcebergSink(BatchSink):
         # Load the Iceberg catalog
         # IMPORTANT: Make sure pyiceberg catalog env variables are set in the host machine - i.e. PYICEBERG_CATALOG__DEFAULT__URI, etc
         #   - For more details, see: https://py.iceberg.apache.org/configuration/)
+        region = fs.resolve_s3_region(self.config.get("s3_bucket"))
         catalog_name = self.config.get("iceberg_catalog_name")
-        catalog = load_catalog(catalog_name)
+        catalog = load_catalog(
+            catalog_name,
+            **{
+                "uri": self.config.get("iceberg_rest_uri"),
+                "s3.endpoint": os.environ.get(
+                    "PYICEBERG_CATALOG__ICEBERGCATALOG__S3__ENDPOINT"
+                ),
+                "py-io-impl": "pyiceberg.io.pyarrow.PyArrowFileIO",
+                "s3.region": region,
+                "s3.access-key-id": os.environ.get(
+                    "PYICEBERG_CATALOG__ICEBERGCATALOG__S3__ACCESS_KEY_ID"
+                ),
+                "s3.secret-access-key": os.environ.get(
+                    "PYICEBERG_CATALOG__ICEBERGCATALOG__S3__SECRET_ACCESS_KEY"
+                ),
+            },
+        )
 
         nss = catalog.list_namespaces()
         self.logger.info(f"Namespaces: {nss}")
