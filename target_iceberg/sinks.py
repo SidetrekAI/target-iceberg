@@ -43,7 +43,9 @@ class IcebergSink(BatchSink):
         """
 
         # Create pyarrow df
+        fields_to_drop = ["_sdc_deleted", "_sdc_table_version"]
         df = pa.Table.from_pylist(context["records"])
+        df_narrow = df.drop_columns(fields_to_drop)
 
         # Load the Iceberg catalog
         # IMPORTANT: Make sure pyiceberg catalog env variables are set in the host machine - i.e. PYICEBERG_CATALOG__DEFAULT__URI, etc
@@ -81,11 +83,14 @@ class IcebergSink(BatchSink):
             self.logger.info(f"Namespace '{ns_name}' already exists")
 
         self.logger.info(f"singer_schema={self.schema['properties']}")
-        self.logger.info(f"record_sample={context['records'][0:3]}")
+        self.logger.info(f"record_sample={context['records'][0]}")
 
         # Create a table if it doesn't exist
         table_name = self.stream_name
         table_id = f"{ns_name}.{table_name}"
+        singer_schema = self.schema
+        singer_schema_narrow = singer_schema
+        singer_schema_narrow["properties"] = {x: singer_schema["properties"][x] for x in singer_schema["properties"] if x not in fields_to_drop}
 
         try:
             table = catalog.load_table(table_id)
@@ -94,9 +99,9 @@ class IcebergSink(BatchSink):
             # TODO: Handle schema evolution - compare existing table schema with singer schema (converted to pyiceberg schema)
         except NoSuchTableError as e:
             # Table doesn't exist, so create it
-            table_schema = singer_to_pyiceberg_schema(self, self.schema)
+            table_schema = singer_to_pyiceberg_schema(self, singer_schema)
             table = catalog.create_table(table_id, schema=table_schema)
             self.logger.info(f"Table '{table_id}' created")
 
         # Add data to the table
-        table.append(df)
+        table.append(df_narrow)
