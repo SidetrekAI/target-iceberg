@@ -7,7 +7,7 @@ from singer_sdk import PluginBase
 from singer_sdk.sinks import BatchSink
 import pyarrow as pa
 from pyiceberg.catalog import load_catalog
-from pyiceberg.exceptions import NamespaceAlreadyExistsError, NoSuchTableError
+from pyiceberg.exceptions import NamespaceAlreadyExistsError, NoSuchNamespaceError, NoSuchTableError
 from requests import HTTPError
 from pyarrow import fs
 
@@ -76,7 +76,8 @@ class IcebergSink(BatchSink):
         try:
             catalog.create_namespace(ns_name)
             self.logger.info(f"Namespace '{ns_name}' created")
-        except NamespaceAlreadyExistsError:
+        except (NamespaceAlreadyExistsError, NoSuchNamespaceError): 
+            # NoSuchNamespaceError is also raised for some reason (probably a bug - but needs to be handled anyway)
             self.logger.info(f"Namespace '{ns_name}' already exists")
 
         self.logger.info(f"singer_schema={self.schema['properties']}")
