@@ -132,6 +132,7 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
         return fields
 
     properties = singer_schema.get("properties")
+    self.logger.info(f"signer_schema={properties}")
     pyarrow_schema = pa.schema(get_pyarrow_schema_from_object(properties=properties))
 
     return pyarrow_schema
