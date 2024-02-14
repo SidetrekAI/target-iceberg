@@ -81,6 +81,7 @@ class IcebergSink(BatchSink):
             self.logger.info(f"Namespace '{ns_name}' already exists")
 
         self.logger.info(f"singer_schema={self.schema['properties']}")
+        self.logger.info(f"record_sample={context['records'][0:3]}")
 
         # Create a table if it doesn't exist
         table_name = self.stream_name
@@ -88,7 +89,7 @@ class IcebergSink(BatchSink):
 
         try:
             table = catalog.load_table(table_id)
-            self.logger.info(f"Table '{table_id}' already exists")
+            self.logger.info(f"Table '{table_id}' loaded")
 
             # TODO: Handle schema evolution - compare existing table schema with singer schema (converted to pyiceberg schema)
         except NoSuchTableError as e:
