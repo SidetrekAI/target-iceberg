@@ -134,8 +134,8 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> pa.Schema:
 def singer_to_pyiceberg_schema(self, singer_schema: dict) -> pi.schema.Schema:
     """Convert singer tap json schema to pyiceberg schema via pyarrow schema."""
     pyarrow_schema = singer_to_pyarrow_schema(self, singer_schema)
-    print(f"pyarrow_schema={pyarrow_schema}")
+    self.logger.info(f"pyarrow_schema={pyarrow_schema}")
     iceberg_schema = pi.io.pyarrow.pyarrow_to_schema(pyarrow_schema)
-    print(f"iceberg_schema={iceberg_schema}")
+    self.logger.info(f"iceberg_schema={iceberg_schema}")
     return iceberg_schema
     
