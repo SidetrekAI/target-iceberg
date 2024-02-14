@@ -66,10 +66,9 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
         Returns schema for an object.
         """
         fields = []
-        field_idx = 0
+        field_id = 0
         for key, val in properties.items():
-            field_idx += 1
-            field_id = f"{level}.{field_idx}"
+            field_id += 1
             field_metadata = {"PARQUET:field_id": field_id}
             
             if "type" in val.keys():
