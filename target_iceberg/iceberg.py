@@ -70,7 +70,7 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
         for key, val in properties.items():
             field_id += 1
             field_metadata = {"PARQUET:field_id": f"{field_id}"}
-            
+
             if "type" in val.keys():
                 type = val["type"]
                 format = val.get("format")
@@ -91,11 +91,21 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
                     # this is done to handle explicit datetime conversion
                     # which happens only at level 1 of a record
                     if format == "date":
-                        fields.append(pa.field(key, pa.date64(), metadata=field_metadata))
+                        fields.append(
+                            pa.field(key, pa.date64(), metadata=field_metadata)
+                        )
                     elif format == "time":
-                        fields.append(pa.field(key, pa.time64(), metadata=field_metadata))
+                        fields.append(
+                            pa.field(key, pa.time64(), metadata=field_metadata)
+                        )
                     else:
-                        fields.append(pa.field(key, pa.timestamp("us", tz="UTC"), metadata=field_metadata))
+                        fields.append(
+                            pa.field(
+                                key,
+                                pa.timestamp("us", tz="UTC"),
+                                metadata=field_metadata,
+                            )
+                        )
                 else:
                     fields.append(pa.field(key, pa.string(), metadata=field_metadata))
             elif "array" in type:
@@ -108,14 +118,18 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
                                 correct for list of all null but it is better to define
                                 exact item types for the list, if not null."""
                         )
-                    fields.append(pa.field(key, pa.list_(item_type), metadata=field_metadata))
+                    fields.append(
+                        pa.field(key, pa.list_(item_type), metadata=field_metadata)
+                    )
                 else:
                     self.logger.warn(
                         f"""key: {key} is defined as list of null, while this would be
                             correct for list of all null but it is better to define
                             exact item types for the list, if not null."""
                     )
-                    fields.append(pa.field(key, pa.list_(pa.null()), metadata=field_metadata))
+                    fields.append(
+                        pa.field(key, pa.list_(pa.null()), metadata=field_metadata)
+                    )
             elif "object" in type:
                 prop = val.get("properties")
                 inner_fields = get_pyarrow_schema_from_object(
@@ -127,12 +141,13 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
                             saving parquet failure as parquet doesn't support
                             empty/null complex types [array, structs] """
                     )
-                fields.append(pa.field(key, pa.struct(inner_fields), metadata=field_metadata))
+                fields.append(
+                    pa.field(key, pa.struct(inner_fields), metadata=field_metadata)
+                )
 
         return fields
 
     properties = singer_schema.get("properties")
-    self.logger.info(f"signer_schema={properties}")
     pyarrow_schema = pa.schema(get_pyarrow_schema_from_object(properties=properties))
 
     return pyarrow_schema
@@ -140,9 +155,9 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
 
 def singer_to_pyiceberg_schema(self, singer_schema: dict) -> PyicebergSchema:
     """Convert singer tap json schema to pyiceberg schema via pyarrow schema."""
+    self.logger.info(f"signer_schema={singer_schema['properties']}")
     pyarrow_schema = singer_to_pyarrow_schema(self, singer_schema)
     self.logger.info(f"pyarrow_schema={pyarrow_schema}")
     iceberg_schema = pyarrow_to_schema(pyarrow_schema)
     self.logger.info(f"iceberg_schema={iceberg_schema}")
     return iceberg_schema
-    
