@@ -155,7 +155,6 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
 
 def singer_to_pyiceberg_schema(self, singer_schema: dict) -> PyicebergSchema:
     """Convert singer tap json schema to pyiceberg schema via pyarrow schema."""
-    self.logger.info(f"signer_schema={singer_schema['properties']}")
     pyarrow_schema = singer_to_pyarrow_schema(self, singer_schema)
     self.logger.info(f"pyarrow_schema={pyarrow_schema}")
     iceberg_schema = pyarrow_to_schema(pyarrow_schema)

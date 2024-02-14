@@ -79,6 +79,8 @@ class IcebergSink(BatchSink):
         except NamespaceAlreadyExistsError:
             self.logger.info(f"Namespace '{ns_name}' already exists")
 
+        self.logger.info(f"singer_schema={self.schema['properties']}")
+
         # Create a table if it doesn't exist
         table_name = self.stream_name
         table_id = f"{ns_name}.{table_name}"
