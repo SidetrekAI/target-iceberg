@@ -95,7 +95,7 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
                     elif format == "time":
                         fields.append(pa.field(key, pa.time64(), metadata=field_metadata))
                     else:
-                        fields.append(pa.field(key, pa.timestamp("s", tz="utc"), metadata=field_metadata))
+                        fields.append(pa.field(key, pa.timestamp("s", tz="UTC"), metadata=field_metadata))
                 else:
                     fields.append(pa.field(key, pa.string(), metadata=field_metadata))
             elif "array" in type:
