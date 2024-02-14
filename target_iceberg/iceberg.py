@@ -1,10 +1,12 @@
 from typing import List, Tuple, Union
 import pyarrow as pa
-import pyiceberg as pi
+from pyarrow import Schema as PyarrowSchema
+from pyiceberg.schema import Schema as PyicebergSchema
+from pyiceberg.io.pyarrow import pyarrow_to_schema
 
 
 # Borrowed from https://github.com/crowemi/target-s3/blob/main/target_s3/formats/format_parquet.py
-def singer_to_pyarrow_schema(self, singer_schema: dict) -> pa.Schema:
+def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
     """Convert singer tap json schema to pyarrow schema."""
 
     def process_anyof_schema(anyOf: List) -> Tuple[List, Union[str, None]]:
@@ -131,11 +133,11 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> pa.Schema:
     return pyarrow_schema
 
 
-def singer_to_pyiceberg_schema(self, singer_schema: dict) -> pi.schema.Schema:
+def singer_to_pyiceberg_schema(self, singer_schema: dict) -> PyicebergSchema:
     """Convert singer tap json schema to pyiceberg schema via pyarrow schema."""
     pyarrow_schema = singer_to_pyarrow_schema(self, singer_schema)
     self.logger.info(f"pyarrow_schema={pyarrow_schema}")
-    iceberg_schema = pi.io.pyarrow.pyarrow_to_schema(pyarrow_schema)
+    iceberg_schema = pyarrow_to_schema(pyarrow_schema)
     self.logger.info(f"iceberg_schema={iceberg_schema}")
     return iceberg_schema
     
