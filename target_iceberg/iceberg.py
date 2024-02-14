@@ -66,7 +66,12 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
         Returns schema for an object.
         """
         fields = []
+        field_idx = 0
         for key, val in properties.items():
+            field_idx += 1
+            field_id = f"{level}.{field_id}"
+            field_metadata = {"PARQUET:field_id": field_id}
+            
             if "type" in val.keys():
                 type = val["type"]
                 format = val.get("format")
@@ -77,23 +82,23 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
                 type = ["string", "null"]
 
             if "integer" in type:
-                fields.append(pa.field(key, pa.int64()))
+                fields.append(pa.field(key, pa.int64(), metadata=field_metadata))
             elif "number" in type:
-                fields.append(pa.field(key, pa.float64()))
+                fields.append(pa.field(key, pa.float64(), metadata=field_metadata))
             elif "boolean" in type:
-                fields.append(pa.field(key, pa.bool_()))
+                fields.append(pa.field(key, pa.bool_(), metadata=field_metadata))
             elif "string" in type:
                 if format and level == 0:
                     # this is done to handle explicit datetime conversion
                     # which happens only at level 1 of a record
                     if format == "date":
-                        fields.append(pa.field(key, pa.date64()))
+                        fields.append(pa.field(key, pa.date64(), metadata=field_metadata))
                     elif format == "time":
-                        fields.append(pa.field(key, pa.time64()))
+                        fields.append(pa.field(key, pa.time64(), metadata=field_metadata))
                     else:
-                        fields.append(pa.field(key, pa.timestamp("s", tz="utc")))
+                        fields.append(pa.field(key, pa.timestamp("s", tz="utc"), metadata=field_metadata))
                 else:
-                    fields.append(pa.field(key, pa.string()))
+                    fields.append(pa.field(key, pa.string(), metadata=field_metadata))
             elif "array" in type:
                 items = val.get("items")
                 if items:
@@ -104,14 +109,14 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
                                 correct for list of all null but it is better to define
                                 exact item types for the list, if not null."""
                         )
-                    fields.append(pa.field(key, pa.list_(item_type)))
+                    fields.append(pa.field(key, pa.list_(item_type), metadata=field_metadata))
                 else:
                     self.logger.warn(
                         f"""key: {key} is defined as list of null, while this would be
                             correct for list of all null but it is better to define
                             exact item types for the list, if not null."""
                     )
-                    fields.append(pa.field(key, pa.list_(pa.null())))
+                    fields.append(pa.field(key, pa.list_(pa.null()), metadata=field_metadata))
             elif "object" in type:
                 prop = val.get("properties")
                 inner_fields = get_pyarrow_schema_from_object(
@@ -123,7 +128,7 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
                             saving parquet failure as parquet doesn't support
                             empty/null complex types [array, structs] """
                     )
-                fields.append(pa.field(key, pa.struct(inner_fields)))
+                fields.append(pa.field(key, pa.struct(inner_fields), metadata=field_metadata))
 
         return fields
 
