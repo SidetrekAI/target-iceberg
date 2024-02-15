@@ -103,5 +103,7 @@ class IcebergSink(BatchSink):
             table = catalog.create_table(table_id, schema=table_schema)
             self.logger.info(f"Table '{table_id}' created")
 
+        table.schema()
+
         # Add data to the table
         table.append(df_narrow)
