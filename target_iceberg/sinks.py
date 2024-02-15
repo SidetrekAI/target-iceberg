@@ -82,8 +82,8 @@ class IcebergSink(BatchSink):
             # NoSuchNamespaceError is also raised for some reason (probably a bug - but needs to be handled anyway)
             self.logger.info(f"Namespace '{ns_name}' already exists")
 
-        self.logger.info(f"singer_schema={self.schema['properties']}")
-        self.logger.info(f"record_sample={context['records'][0]}")
+        # self.logger.info(f"singer_schema={self.schema['properties']}")
+        # self.logger.info(f"record_sample={context['records'][0]}")
 
         # Create a table if it doesn't exist
         table_name = self.stream_name
@@ -102,8 +102,6 @@ class IcebergSink(BatchSink):
             table_schema = singer_to_pyiceberg_schema(self, singer_schema)
             table = catalog.create_table(table_id, schema=table_schema)
             self.logger.info(f"Table '{table_id}' created")
-
-        table.schema()
 
         # Add data to the table
         table.append(df_narrow)
