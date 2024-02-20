@@ -63,7 +63,7 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
 
     def get_pyarrow_schema_from_object(properties: dict, level: int = 0):
         """
-        Returns schema for an object. Need to debug field_id.
+        Returns schema for an object. Need to debug field_id
         """
         fields = []
         field_id = 0
