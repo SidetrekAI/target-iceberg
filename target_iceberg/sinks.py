@@ -51,26 +51,20 @@ class IcebergSink(BatchSink):
         # IMPORTANT: Make sure pyiceberg catalog env variables are set in the host machine - i.e. PYICEBERG_CATALOG__DEFAULT__URI, etc
         #   - For more details, see: https://py.iceberg.apache.org/configuration/)
         region = fs.resolve_s3_region(self.config.get("s3_bucket"))
-        self.logger.info(f'AWS Region: {region}')
-        
+        self.logger.info(f"AWS Region: {region}")
+
         catalog_name = self.config.get("iceberg_catalog_name")
         self.logger.info(f"Catalog name: {catalog_name}")
-        
+
         catalog = load_catalog(
             catalog_name,
             **{
                 "uri": self.config.get("iceberg_rest_uri"),
-                "s3.endpoint": os.environ.get(
-                    "PYICEBERG_CATALOG__ICEBERGCATALOG__S3__ENDPOINT"
-                ),
+                "s3.endpoint": os.environ.get("PYICEBERG_CATALOG__ICEBERGCATALOG__S3__ENDPOINT"),
                 "py-io-impl": "pyiceberg.io.pyarrow.PyArrowFileIO",
-                "s3.region": region,
-                "s3.access-key-id": os.environ.get(
-                    "PYICEBERG_CATALOG__ICEBERGCATALOG__S3__ACCESS_KEY_ID"
-                ),
-                "s3.secret-access-key": os.environ.get(
-                    "PYICEBERG_CATALOG__ICEBERGCATALOG__S3__SECRET_ACCESS_KEY"
-                ),
+                "s3.region": os.environ.get("PYICEBERG_CATALOG__ICEBERGCATALOG__S3__REGION"),
+                "s3.access-key-id": os.environ.get("PYICEBERG_CATALOG__ICEBERGCATALOG__S3__ACCESS_KEY_ID"),
+                "s3.secret-access-key": os.environ.get("PYICEBERG_CATALOG__ICEBERGCATALOG__S3__SECRET_ACCESS_KEY"),
             },
         )
 
@@ -82,7 +76,7 @@ class IcebergSink(BatchSink):
         try:
             catalog.create_namespace(ns_name)
             self.logger.info(f"Namespace '{ns_name}' created")
-        except (NamespaceAlreadyExistsError, NoSuchNamespaceError): 
+        except (NamespaceAlreadyExistsError, NoSuchNamespaceError):
             # NoSuchNamespaceError is also raised for some reason (probably a bug - but needs to be handled anyway)
             self.logger.info(f"Namespace '{ns_name}' already exists")
 
@@ -91,7 +85,9 @@ class IcebergSink(BatchSink):
         table_id = f"{ns_name}.{table_name}"
         singer_schema = self.schema
         singer_schema_narrow = singer_schema
-        singer_schema_narrow["properties"] = {x: singer_schema["properties"][x] for x in singer_schema["properties"] if x not in fields_to_drop}
+        singer_schema_narrow["properties"] = {
+            x: singer_schema["properties"][x] for x in singer_schema["properties"] if x not in fields_to_drop
+        }
 
         try:
             table = catalog.load_table(table_id)
