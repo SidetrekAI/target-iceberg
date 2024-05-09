@@ -51,8 +51,11 @@ class IcebergSink(BatchSink):
         # IMPORTANT: Make sure pyiceberg catalog env variables are set in the host machine - i.e. PYICEBERG_CATALOG__DEFAULT__URI, etc
         #   - For more details, see: https://py.iceberg.apache.org/configuration/)
         region = fs.resolve_s3_region(self.config.get("s3_bucket"))
-        print('AWS Region: ', region)
+        self.logger.info(f'AWS Region: {region}')
+        
         catalog_name = self.config.get("iceberg_catalog_name")
+        self.logger.info(f"Catalog name: {catalog_name}")
+        
         catalog = load_catalog(
             catalog_name,
             **{
