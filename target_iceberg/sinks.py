@@ -48,26 +48,27 @@ class IcebergSink(BatchSink):
         df_narrow = df.drop_columns(fields_to_drop)
 
         # Load the Iceberg catalog
-        # IMPORTANT: Make sure pyiceberg catalog env variables are set in the host machine - i.e. PYICEBERG_CATALOG__DEFAULT__URI, etc
-        #   - For more details, see: https://py.iceberg.apache.org/configuration/)
         region = fs.resolve_s3_region(self.config.get("s3_bucket"))
         self.logger.info(f"AWS Region: {region}")
 
         catalog_name = self.config.get("iceberg_catalog_name")
         self.logger.info(f"Catalog name: {catalog_name}")
         
-        s3_endpoint = os.environ.get("PYICEBERG_CATALOG__ICEBERGCATALOG__S3__ENDPOINT")
+        s3_endpoint = self.config.get("s3_endpoint")
         self.logger.info(f"S3 endpoint: {s3_endpoint}")
+        
+        iceberg_rest_uri = self.config.get("iceberg_rest_uri")
+        self.logger.info(f"Iceberg REST URI: {iceberg_rest_uri}")
 
         catalog = load_catalog(
             catalog_name,
             **{
-                "uri": self.config.get("iceberg_rest_uri"),
+                "uri": iceberg_rest_uri,
                 "s3.endpoint": s3_endpoint,
                 "py-io-impl": "pyiceberg.io.pyarrow.PyArrowFileIO",
                 "s3.region": region,
-                "s3.access-key-id": os.environ.get("PYICEBERG_CATALOG__ICEBERGCATALOG__S3__ACCESS_KEY_ID"),
-                "s3.secret-access-key": os.environ.get("PYICEBERG_CATALOG__ICEBERGCATALOG__S3__SECRET_ACCESS_KEY"),
+                "s3.access-key-id": self.config.get("aws_access_key_id"),
+                "s3.secret-access-key": self.config.get("aws_secret_access_key"),
             },
         )
 
