@@ -55,12 +55,15 @@ class IcebergSink(BatchSink):
 
         catalog_name = self.config.get("iceberg_catalog_name")
         self.logger.info(f"Catalog name: {catalog_name}")
+        
+        s3_endpoint = os.environ.get("PYICEBERG_CATALOG__ICEBERGCATALOG__S3__ENDPOINT")
+        self.logger.info(f"S3 endpoint: {s3_endpoint}")
 
         catalog = load_catalog(
             catalog_name,
             **{
                 "uri": self.config.get("iceberg_rest_uri"),
-                "s3.endpoint": os.environ.get("PYICEBERG_CATALOG__ICEBERGCATALOG__S3__ENDPOINT"),
+                "s3.endpoint": s3_endpoint,
                 "py-io-impl": "pyiceberg.io.pyarrow.PyArrowFileIO",
                 "s3.region": region,
                 "s3.access-key-id": os.environ.get("PYICEBERG_CATALOG__ICEBERGCATALOG__S3__ACCESS_KEY_ID"),
