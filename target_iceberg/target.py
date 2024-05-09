@@ -17,16 +17,19 @@ class TargetIceberg(Target):
         th.Property( # temporary until pyiceberg fix is released
             "aws_access_key_id",
             th.StringType,
+            required=True,
             description="AWS access key id",
         ),
         th.Property( # temporary until pyiceberg fix is released
             "aws_secret_access_key",
             th.StringType,
+            required=True,
             description="AWS secret access key",
         ),
         th.Property( # temporary until pyiceberg fix is released
             "s3_endpoint",
             th.StringType,
+            required=True,
             description="S3 endpoint - e.g. http://localhost:9000",
         ),
         th.Property( # temporary until pyiceberg fix is released
