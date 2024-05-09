@@ -62,7 +62,7 @@ class IcebergSink(BatchSink):
                 "uri": self.config.get("iceberg_rest_uri"),
                 "s3.endpoint": os.environ.get("PYICEBERG_CATALOG__ICEBERGCATALOG__S3__ENDPOINT"),
                 "py-io-impl": "pyiceberg.io.pyarrow.PyArrowFileIO",
-                "s3.region": os.environ.get("PYICEBERG_CATALOG__ICEBERGCATALOG__S3__REGION"),
+                "s3.region": region,
                 "s3.access-key-id": os.environ.get("PYICEBERG_CATALOG__ICEBERGCATALOG__S3__ACCESS_KEY_ID"),
                 "s3.secret-access-key": os.environ.get("PYICEBERG_CATALOG__ICEBERGCATALOG__S3__SECRET_ACCESS_KEY"),
             },
