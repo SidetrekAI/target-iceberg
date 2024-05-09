@@ -5,10 +5,13 @@ import os
 from typing import Dict, List, Optional
 from singer_sdk import PluginBase
 from singer_sdk.sinks import BatchSink
-import pyarrow as pa
+import pyarrow as pa 
 from pyiceberg.catalog import load_catalog
-from pyiceberg.exceptions import NamespaceAlreadyExistsError, NoSuchNamespaceError, NoSuchTableError
-from requests import HTTPError
+from pyiceberg.exceptions import (
+    NamespaceAlreadyExistsError,
+    NoSuchNamespaceError,
+    NoSuchTableError,
+)
 from pyarrow import fs
 
 from .iceberg import singer_to_pyiceberg_schema
@@ -78,7 +81,7 @@ class IcebergSink(BatchSink):
         try:
             catalog.create_namespace(ns_name)
             self.logger.info(f"Namespace '{ns_name}' created")
-        except (NamespaceAlreadyExistsError, NoSuchNamespaceError): 
+        except (NamespaceAlreadyExistsError, NoSuchNamespaceError):
             # NoSuchNamespaceError is also raised for some reason (probably a bug - but needs to be handled anyway)
             self.logger.info(f"Namespace '{ns_name}' already exists")
 
@@ -87,7 +90,11 @@ class IcebergSink(BatchSink):
         table_id = f"{ns_name}.{table_name}"
         singer_schema = self.schema
         singer_schema_narrow = singer_schema
-        singer_schema_narrow["properties"] = {x: singer_schema["properties"][x] for x in singer_schema["properties"] if x not in fields_to_drop}
+        singer_schema_narrow["properties"] = {
+            x: singer_schema["properties"][x]
+            for x in singer_schema["properties"]
+            if x not in fields_to_drop
+        }
 
         try:
             table = catalog.load_table(table_id)
