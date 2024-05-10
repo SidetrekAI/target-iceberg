@@ -1,7 +1,7 @@
-from typing import List, Tuple, Union
-import pyarrow as pa
+from typing import cast, Any, List, Tuple, Union
+import pyarrow as pa  # type: ignore
 from pyarrow import Schema as PyarrowSchema
-from pyiceberg.schema import Schema as PyicebergSchema
+from pyiceberg.schema import Schema as PyicebergSchema, assign_fresh_schema_ids
 from pyiceberg.io.pyarrow import pyarrow_to_schema
 
 
@@ -23,7 +23,7 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
                 types.append(typ)
             else:
                 types.extend(typ)
-        types = set(types)
+        types = list(set(types))
         formats = list(set(formats))
         ret_type = []
         if "string" in types:
@@ -33,7 +33,7 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
         return ret_type, formats[0] if formats else None
 
     def get_pyarrow_schema_from_array(items: dict, level: int = 0):
-        type = items.get("type")
+        type = cast(list[Any], items.get("type"))
         any_of_types = items.get("anyOf")
 
         if any_of_types:
@@ -49,26 +49,22 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
         elif "boolean" in type:
             return pa.bool_()
         elif "array" in type:
-            return pa.list_(
-                get_pyarrow_schema_from_array(items=items.get("items"), level=level)
-            )
+            subitems = cast(dict, items.get("items"))
+            return pa.list_(get_pyarrow_schema_from_array(items=subitems, level=level))
         elif "object" in type:
-            return pa.struct(
-                get_pyarrow_schema_from_object(
-                    properties=items.get("properties"), level=level + 1
-                )
-            )
+            subproperties = cast(dict, items.get("properties"))
+            return pa.struct(get_pyarrow_schema_from_object(properties=subproperties, level=level + 1))
         else:
             return pa.null()
 
     def get_pyarrow_schema_from_object(properties: dict, level: int = 0):
         """
-        Returns schema for an object. need to test field_id related bug.
+        Returns schema for an object.
         """
         fields = []
         field_id = 0
         for key, val in properties.items():
-            field_id += 1
+            field_id = 1  # Just set it to 1 here - it'll be overwritten to handle nested schema
             field_metadata = {"PARQUET:field_id": f"{field_id}"}
 
             if "type" in val.keys():
@@ -91,13 +87,9 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
                     # this is done to handle explicit datetime conversion
                     # which happens only at level 1 of a record
                     if format == "date":
-                        fields.append(
-                            pa.field(key, pa.date64(), metadata=field_metadata)
-                        )
+                        fields.append(pa.field(key, pa.date64(), metadata=field_metadata))
                     elif format == "time":
-                        fields.append(
-                            pa.field(key, pa.time64(), metadata=field_metadata)
-                        )
+                        fields.append(pa.field(key, pa.time64(), metadata=field_metadata))
                     else:
                         fields.append(
                             pa.field(
@@ -118,36 +110,28 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
                                 correct for list of all null but it is better to define
                                 exact item types for the list, if not null."""
                         )
-                    fields.append(
-                        pa.field(key, pa.list_(item_type), metadata=field_metadata)
-                    )
+                    fields.append(pa.field(key, pa.list_(item_type), metadata=field_metadata))
                 else:
                     self.logger.warn(
                         f"""key: {key} is defined as list of null, while this would be
                             correct for list of all null but it is better to define
                             exact item types for the list, if not null."""
                     )
-                    fields.append(
-                        pa.field(key, pa.list_(pa.null()), metadata=field_metadata)
-                    )
+                    fields.append(pa.field(key, pa.list_(pa.null()), metadata=field_metadata))
             elif "object" in type:
                 prop = val.get("properties")
-                inner_fields = get_pyarrow_schema_from_object(
-                    properties=prop, level=level + 1
-                )
+                inner_fields = get_pyarrow_schema_from_object(properties=prop, level=level + 1)
                 if not inner_fields:
                     self.logger.warn(
                         f"""key: {key} has no fields defined, this may cause
                             saving parquet failure as parquet doesn't support
                             empty/null complex types [array, structs] """
                     )
-                fields.append(
-                    pa.field(key, pa.struct(inner_fields), metadata=field_metadata)
-                )
+                fields.append(pa.field(key, pa.struct(inner_fields), metadata=field_metadata))
 
         return fields
 
-    properties = singer_schema.get("properties")
+    properties = singer_schema["properties"]
     pyarrow_schema = pa.schema(get_pyarrow_schema_from_object(properties=properties))
 
     return pyarrow_schema
@@ -156,5 +140,11 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
 def singer_to_pyiceberg_schema(self, singer_schema: dict) -> PyicebergSchema:
     """Convert singer tap json schema to pyiceberg schema via pyarrow schema."""
     pyarrow_schema = singer_to_pyarrow_schema(self, singer_schema)
+    self.logger.info(f"pyarrow_schema={pyarrow_schema}")
     pyiceberg_schema = pyarrow_to_schema(pyarrow_schema)
-    return pyiceberg_schema
+    self.logger.info(f"pyiceberg_schema={pyiceberg_schema}")
+
+    # Overwrite the default field_ids of 1 to unique ids (this ensures the nested fields are correctly handled)
+    pyiceberg_schema_with_field_ids = assign_fresh_schema_ids(pyiceberg_schema)
+
+    return pyiceberg_schema_with_field_ids

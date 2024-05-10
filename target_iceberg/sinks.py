@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 import os
-from typing import Dict, List, Optional
-from singer_sdk import PluginBase
+from typing import cast, Any
 from singer_sdk.sinks import BatchSink
-import pyarrow as pa
+import pyarrow as pa  # type: ignore
 from pyiceberg.catalog import load_catalog
 from pyiceberg.exceptions import NamespaceAlreadyExistsError, NoSuchNamespaceError, NoSuchTableError
-from requests import HTTPError
 from pyarrow import fs
 
 from .iceberg import singer_to_pyiceberg_schema
@@ -21,10 +19,10 @@ class IcebergSink(BatchSink):
 
     def __init__(
         self,
-        target: PluginBase,
+        target: Any,
         stream_name: str,
-        schema: Dict,
-        key_properties: Optional[List[str]],
+        schema: dict,
+        key_properties: list[str] | None,
     ) -> None:
         super().__init__(
             target=target,
@@ -43,9 +41,7 @@ class IcebergSink(BatchSink):
         """
 
         # Create pyarrow df
-        fields_to_drop = ["_sdc_deleted_at", "_sdc_table_version"]
         df = pa.Table.from_pylist(context["records"])
-        df_narrow = df.drop_columns(fields_to_drop)
 
         # Load the Iceberg catalog
         region = fs.resolve_s3_region(self.config.get("s3_bucket"))
@@ -53,10 +49,10 @@ class IcebergSink(BatchSink):
 
         catalog_name = self.config.get("iceberg_catalog_name")
         self.logger.info(f"Catalog name: {catalog_name}")
-        
+
         s3_endpoint = self.config.get("s3_endpoint")
         self.logger.info(f"S3 endpoint: {s3_endpoint}")
-        
+
         iceberg_rest_uri = self.config.get("iceberg_rest_uri")
         self.logger.info(f"Iceberg REST URI: {iceberg_rest_uri}")
 
@@ -76,7 +72,7 @@ class IcebergSink(BatchSink):
         self.logger.info(f"Namespaces: {nss}")
 
         # Create a namespace if it doesn't exist
-        ns_name = self.config.get("iceberg_catalog_namespace_name")
+        ns_name: str = cast(str, self.config.get("iceberg_catalog_namespace_name"))
         try:
             catalog.create_namespace(ns_name)
             self.logger.info(f"Namespace '{ns_name}' created")
@@ -88,10 +84,6 @@ class IcebergSink(BatchSink):
         table_name = self.stream_name
         table_id = f"{ns_name}.{table_name}"
         singer_schema = self.schema
-        singer_schema_narrow = singer_schema
-        singer_schema_narrow["properties"] = {
-            x: singer_schema["properties"][x] for x in singer_schema["properties"] if x not in fields_to_drop
-        }
 
         try:
             table = catalog.load_table(table_id)
@@ -105,4 +97,4 @@ class IcebergSink(BatchSink):
             self.logger.info(f"Table '{table_id}' created")
 
         # Add data to the table
-        table.append(df_narrow)
+        table.append(df)
