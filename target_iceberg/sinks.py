@@ -85,20 +85,24 @@ class IcebergSink(BatchSink):
         table_id = f"{ns_name}.{table_name}"
         singer_schema = self.schema
 
-        try:
-            table = catalog.load_table(table_id)
-            self.logger.info(f"Table '{table_id}' loaded")
+        # try:
+        #     table = catalog.load_table(table_id)
+        #     self.logger.info(f"Table '{table_id}' loaded")
 
-            # TODO: Handle schema evolution - compare existing table schema with singer schema (converted to pyiceberg schema)
-        except NoSuchTableError as e:
-            # Table doesn't exist, so create it
-            table_schema = singer_to_pyiceberg_schema(self, singer_schema)
-            self.logger.info(f"Pyiceberg schema: {table_schema}")
-            table = catalog.create_table(table_id, schema=table_schema)
-            self.logger.info(f"Table '{table_id}' created")
+        #     # TODO: Handle schema evolution - compare existing table schema with singer schema (converted to pyiceberg schema)
+        # except NoSuchTableError as e:
+        #     # Table doesn't exist, so create it
+        #     table_schema = singer_to_pyiceberg_schema(self, singer_schema)
+        #     self.logger.info(f"Pyiceberg schema: {table_schema}")
+
+        #     table = catalog.create_table(table_id, schema=table_schema)
+        #     self.logger.info(f"Table '{table_id}' created")
 
         table_schema = singer_to_pyiceberg_schema(self, singer_schema)
         self.logger.info(f"Pyiceberg schema: {table_schema}")
 
-        # # Add data to the table
-        # table.append(df)
+        table = catalog.create_table(table_id, schema=table_schema)
+        self.logger.info(f"Table '{table_id}' created")
+
+        # Add data to the table
+        table.append(df)
