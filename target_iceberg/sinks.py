@@ -84,6 +84,7 @@ class IcebergSink(BatchSink):
         table_name = self.stream_name
         table_id = f"{ns_name}.{table_name}"
         singer_schema = self.schema
+        self.logger.info(f"df: {df}")
         self.logger.info(f"Singer schema: {singer_schema}")
 
         try:
