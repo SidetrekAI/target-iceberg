@@ -84,6 +84,7 @@ class IcebergSink(BatchSink):
         table_name = self.stream_name
         table_id = f"{ns_name}.{table_name}"
         singer_schema = self.schema
+        self.logger.info(f"Singer schema: {singer_schema}")
 
         try:
             table = catalog.load_table(table_id)
@@ -97,5 +98,6 @@ class IcebergSink(BatchSink):
         #     table = catalog.create_table(table_id, schema=table_schema)
         #     self.logger.info(f"Table '{table_id}' created")
 
+        self.logger.info(f"Finished!")
         # # Add data to the table
         # table.append(df)
