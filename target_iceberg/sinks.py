@@ -98,7 +98,7 @@ class IcebergSink(BatchSink):
             self.logger.info(f"Table '{table_id}' created")
 
         table_schema = singer_to_pyiceberg_schema(self, singer_schema)
-        self.logger.info(f"Pyarrow schema: {table_schema}")
+        self.logger.info(f"Pyiceberg schema: {table_schema}")
 
         # # Add data to the table
         # table.append(df)
