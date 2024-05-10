@@ -84,6 +84,8 @@ class IcebergSink(BatchSink):
         table_name = self.stream_name
         table_id = f"{ns_name}.{table_name}"
         singer_schema = self.schema
+        
+        self.logger.info(f"df: {df}")
 
         try:
             table = catalog.load_table(table_id)
@@ -93,8 +95,6 @@ class IcebergSink(BatchSink):
         except NoSuchTableError as e:
             # Table doesn't exist, so create it
             table_schema = singer_to_pyiceberg_schema(self, singer_schema)
-            self.logger.info(f"Pyiceberg schema: {table_schema}")
-
             table = catalog.create_table(table_id, schema=table_schema)
             self.logger.info(f"Table '{table_id}' created")
 
