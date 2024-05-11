@@ -134,32 +134,23 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
     return pyarrow_schema
 
 
-# def assign_field_ids(schema, start_id=0):
-#     new_fields = []
-#     for field in schema:
-#         if isinstance(field.type, pa.StructType):
-#             nested_schema, start_id = assign_field_ids(pa.schema(field.type.fields), start_id)
-#             new_fields.append(pa.field(field.name, nested_schema, metadata={'id': str(start_id)}))
-#         else:
-#             new_fields.append(pa.field(field.name, field.type, metadata={'id': str(start_id)}))
-#             start_id += 1
-#     return pa.schema(new_fields), start_id
-
-
-def assign_field_ids(self, pa_fields: list[PyarrowField], start_id: int = 0) -> Tuple[list[PyarrowField], int]:
+def assign_field_ids(pa_fields: list[PyarrowField], field_id: int = 0) -> Tuple[list[PyarrowField], int]:
     """Assign field ids to the schema."""
     new_fields = []
     for field in pa_fields:
-        self.logger.info(f"field: {field}")
-        start_id += 1
         if isinstance(field.type, pa.StructType):
-            nested_pa_fields, start_id = assign_field_ids(self, field, start_id)
-            new_fields.append(pa.struct(nested_pa_fields))
+            field_indices = list(range(field.type.num_fields))
+            struct_fields = [field.type.field(field_i) for field_i in field_indices]
+            nested_pa_fields, field_id = assign_field_ids(struct_fields, field_id)
+            new_fields.append(
+                pa.field(field.name, pa.struct(nested_pa_fields), nullable=field.nullable, metadata=field.metadata)
+            )
         else:
-            field_with_metadata = field.with_metadata({"PARQUET:field_id": f"{start_id}"})
+            field_id += 1
+            field_with_metadata = field.with_metadata({"PARQUET:field_id": f"{field_id}"})
             new_fields.append(field_with_metadata)
-
-    return new_fields, start_id
+    
+    return new_fields, field_id
 
 
 def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
