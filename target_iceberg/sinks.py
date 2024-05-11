@@ -82,6 +82,7 @@ class IcebergSink(BatchSink):
         singer_schema = self.schema
         pa_schema = singer_to_pyarrow_schema(self, singer_schema)
         df = pa.Table.from_pylist(context["records"], schema=pa_schema)
+        self.logger.info(f"pa_schema: {pa_schema}")
 
         # Create a table if it doesn't exist
         table_name = self.stream_name
@@ -95,6 +96,7 @@ class IcebergSink(BatchSink):
         except NoSuchTableError as e:
             # Table doesn't exist, so create it
             pyiceberg_schema = pyarrow_to_pyiceberg_schema(self, pa_schema)
+            self.logger.info(f"PyIceberg Schema: {pyiceberg_schema}")
             table = catalog.create_table(table_id, schema=pyiceberg_schema)
             self.logger.info(f"Table '{table_id}' created")
 

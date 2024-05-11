@@ -1,12 +1,12 @@
 from typing import cast, Any, List, Tuple, Union
 import pyarrow as pa  # type: ignore
-from pyarrow import Schema as PyarrowSchema
+from pyarrow import Schema as PyarrowSchema, Field as PyarrowField
 from pyiceberg.schema import Schema as PyicebergSchema, assign_fresh_schema_ids
 from pyiceberg.io.pyarrow import pyarrow_to_schema
 
 
 # Borrowed from https://github.com/crowemi/target-s3/blob/main/target_s3/formats/format_parquet.py
-def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
+def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> PyarrowSchema:
     """Convert singer tap json schema to pyarrow schema."""
 
     def process_anyof_schema(anyOf: List) -> Tuple[List, Union[str, None]]:
@@ -62,11 +62,8 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
         Returns schema for an object.
         """
         fields = []
-        field_id = 0
-        for key, val in properties.items():
-            field_id = 1  # Just set it to 1 here - it'll be overwritten to handle nested schema
-            field_metadata = {"PARQUET:field_id": f"{field_id}"}
 
+        for key, val in properties.items():
             if "type" in val.keys():
                 type = val["type"]
                 format = val.get("format")
@@ -78,32 +75,26 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
 
             if "integer" in type:
                 nullable = "null" in type
-                fields.append(pa.field(key, pa.int64(), nullable=nullable, metadata=field_metadata))
+                fields.append(pa.field(key, pa.int64(), nullable=nullable))
             elif "number" in type:
                 nullable = "null" in type
-                fields.append(pa.field(key, pa.float64(), nullable=nullable, metadata=field_metadata))
+                fields.append(pa.field(key, pa.float64(), nullable=nullable))
             elif "boolean" in type:
                 nullable = "null" in type
-                fields.append(pa.field(key, pa.bool_(), nullable=nullable, metadata=field_metadata))
+                fields.append(pa.field(key, pa.bool_(), nullable=nullable))
             elif "string" in type:
                 nullable = "null" in type
                 if format and level == 0:
                     # this is done to handle explicit datetime conversion
                     # which happens only at level 1 of a record
                     if format == "date":
-                        fields.append(pa.field(key, pa.date64(), nullable=nullable, metadata=field_metadata))
+                        fields.append(pa.field(key, pa.date64(), nullable=nullable))
                     elif format == "time":
-                        fields.append(pa.field(key, pa.time64(), nullable=nullable, metadata=field_metadata))
+                        fields.append(pa.field(key, pa.time64(), nullable=nullable))
                     else:
-                        fields.append(
-                            pa.field(
-                                key,
-                                pa.timestamp("us", tz="UTC"),
-                                metadata=field_metadata,
-                            )
-                        )
+                        fields.append(pa.field(key, pa.timestamp("us", tz="UTC"), nullable=nullable))
                 else:
-                    fields.append(pa.field(key, pa.string(), nullable=nullable, metadata=field_metadata))
+                    fields.append(pa.field(key, pa.string(), nullable=nullable))
             elif "array" in type:
                 nullable = "null" in type
                 items = val.get("items")
@@ -115,14 +106,14 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
                                 correct for list of all null but it is better to define
                                 exact item types for the list, if not null."""
                         )
-                    fields.append(pa.field(key, pa.list_(item_type), nullable=nullable, metadata=field_metadata))
+                    fields.append(pa.field(key, pa.list_(item_type), nullable=nullable))
                 else:
                     self.logger.warn(
                         f"""key: {key} is defined as list of null, while this would be
                             correct for list of all null but it is better to define
                             exact item types for the list, if not null."""
                     )
-                    fields.append(pa.field(key, pa.list_(pa.null()), nullable=nullable, metadata=field_metadata))
+                    fields.append(pa.field(key, pa.list_(pa.null()), nullable=nullable))
             elif "object" in type:
                 nullable = "null" in type
                 prop = val.get("properties")
@@ -133,7 +124,7 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
                             saving parquet failure as parquet doesn't support
                             empty/null complex types [array, structs] """
                     )
-                fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable, metadata=field_metadata))
+                fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
 
         return fields
 
@@ -143,12 +134,47 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
     return pyarrow_schema
 
 
-def pyarrow_to_pyiceberg_schema(self, pyarrow_schema: PyarrowSchema) -> PyicebergSchema:
+# def assign_field_ids(schema, start_id=0):
+#     new_fields = []
+#     for field in schema:
+#         if isinstance(field.type, pa.StructType):
+#             nested_schema, start_id = assign_field_ids(pa.schema(field.type.fields), start_id)
+#             new_fields.append(pa.field(field.name, nested_schema, metadata={'id': str(start_id)}))
+#         else:
+#             new_fields.append(pa.field(field.name, field.type, metadata={'id': str(start_id)}))
+#             start_id += 1
+#     return pa.schema(new_fields), start_id
+
+
+def assign_field_ids(self, pa_fields: list[PyarrowField], start_id: int = 0) -> Tuple[list[PyarrowField], int]:
+    """Assign field ids to the schema."""
+    new_fields = cast(list[PyarrowField], [])
+    for field in pa_fields:
+        start_id += 1
+        if isinstance(field.type, pa.StructType):
+            nested_pa_fields, start_id = assign_field_ids(self, field, start_id)
+            new_fields.append(pa.field(nested_pa_fields, pa.struct(), nullable=field.nullable))
+        else:
+            field_with_metadata = field.with_metadata({"PARQUET:field_id": f"{start_id}"})
+            new_fields.append(field_with_metadata)
+
+    return new_fields, start_id
+
+
+def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
+    """Convert singer tap json schema to pyarrow schema."""
+    pa_schema = singer_to_pyarrow_schema_without_field_ids(self, singer_schema)
+    pa_fields_with_field_ids = assign_field_ids(self, pa_schema)
+    return pa.schema(pa_fields_with_field_ids)
+
+
+def pyarrow_to_pyiceberg_schema(self, pa_schema: PyarrowSchema) -> PyicebergSchema:
     """Convert pyarrow schema to pyiceberg schema."""
-    pyiceberg_schema = pyarrow_to_schema(pyarrow_schema)
+    pyiceberg_schema = pyarrow_to_schema(pa_schema)
     self.logger.info(f"PyIceberg Schema: {pyiceberg_schema}")
+    return pyiceberg_schema
 
-    # Overwrite the default field_ids of 1 to unique ids (this ensures the nested fields are correctly handled)
-    pyiceberg_schema_with_field_ids = assign_fresh_schema_ids(pyiceberg_schema)
+    # # Overwrite the default field_ids of 1 to unique ids (this ensures the nested fields are correctly handled)
+    # pyiceberg_schema_with_field_ids = assign_fresh_schema_ids(pyiceberg_schema)
 
-    return pyiceberg_schema_with_field_ids
+    # return pyiceberg_schema_with_field_ids
