@@ -9,7 +9,7 @@ from pyiceberg.catalog import load_catalog
 from pyiceberg.exceptions import NamespaceAlreadyExistsError, NoSuchNamespaceError, NoSuchTableError
 from pyarrow import fs
 
-from .iceberg import singer_to_pyiceberg_schema
+from .iceberg import singer_to_pyarrow_schema, pyarrow_to_pyiceberg_schema
 
 
 class IcebergSink(BatchSink):
@@ -39,9 +39,6 @@ class IcebergSink(BatchSink):
         Args:
             context: Stream partition or context dictionary.
         """
-
-        # Create pyarrow df
-        df = pa.Table.from_pylist(context["records"])
 
         # Load the Iceberg catalog
         region = fs.resolve_s3_region(self.config.get("s3_bucket"))
@@ -80,12 +77,15 @@ class IcebergSink(BatchSink):
             # NoSuchNamespaceError is also raised for some reason (probably a bug - but needs to be handled anyway)
             self.logger.info(f"Namespace '{ns_name}' already exists")
 
+        # Create pyarrow df
+        self.logger.info(f"records: {context['records']}")
+        singer_schema = self.schema
+        pa_schema = singer_to_pyarrow_schema(self, singer_schema)
+        df = pa.Table.from_pylist(context["records"], schema=pa_schema)
+
         # Create a table if it doesn't exist
         table_name = self.stream_name
         table_id = f"{ns_name}.{table_name}"
-        singer_schema = self.schema
-        
-        self.logger.info(f"df: {df}")
 
         try:
             table = catalog.load_table(table_id)
@@ -94,8 +94,8 @@ class IcebergSink(BatchSink):
             # TODO: Handle schema evolution - compare existing table schema with singer schema (converted to pyiceberg schema)
         except NoSuchTableError as e:
             # Table doesn't exist, so create it
-            table_schema = singer_to_pyiceberg_schema(self, singer_schema)
-            table = catalog.create_table(table_id, schema=table_schema)
+            pyiceberg_schema = pyarrow_to_pyiceberg_schema(self, pa_schema)
+            table = catalog.create_table(table_id, schema=pyiceberg_schema)
             self.logger.info(f"Table '{table_id}' created")
 
         # Add data to the table

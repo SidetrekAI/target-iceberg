@@ -143,16 +143,12 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
     return pyarrow_schema
 
 
-def singer_to_pyiceberg_schema(self, singer_schema: dict) -> PyicebergSchema:
-    """Convert singer tap json schema to pyiceberg schema via pyarrow schema."""
-    pyarrow_schema = singer_to_pyarrow_schema(self, singer_schema)
-    self.logger.info(f"PyArrow Schema: {pyarrow_schema}")
-    
+def pyarrow_to_pyiceberg_schema(self, pyarrow_schema: PyarrowSchema) -> PyicebergSchema:
+    """Convert pyarrow schema to pyiceberg schema."""
     pyiceberg_schema = pyarrow_to_schema(pyarrow_schema)
     self.logger.info(f"PyIceberg Schema: {pyiceberg_schema}")
-    return pyiceberg_schema
 
-    # # Overwrite the default field_ids of 1 to unique ids (this ensures the nested fields are correctly handled)
-    # pyiceberg_schema_with_field_ids = assign_fresh_schema_ids(pyiceberg_schema)
+    # Overwrite the default field_ids of 1 to unique ids (this ensures the nested fields are correctly handled)
+    pyiceberg_schema_with_field_ids = assign_fresh_schema_ids(pyiceberg_schema)
 
-    # return pyiceberg_schema_with_field_ids
+    return pyiceberg_schema_with_field_ids
