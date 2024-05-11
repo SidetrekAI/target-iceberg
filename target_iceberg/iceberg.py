@@ -148,12 +148,12 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
 
 def assign_field_ids(self, pa_fields: list[PyarrowField], start_id: int = 0) -> Tuple[list[PyarrowField], int]:
     """Assign field ids to the schema."""
-    new_fields = cast(list[PyarrowField], [])
+    new_fields = []
     for field in pa_fields:
         start_id += 1
         if isinstance(field.type, pa.StructType):
             nested_pa_fields, start_id = assign_field_ids(self, field, start_id)
-            new_fields.append(pa.field(nested_pa_fields, pa.struct(), nullable=field.nullable))
+            new_fields.append(pa.struct(nested_pa_fields))
         else:
             field_with_metadata = field.with_metadata({"PARQUET:field_id": f"{start_id}"})
             new_fields.append(field_with_metadata)

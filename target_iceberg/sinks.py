@@ -78,7 +78,6 @@ class IcebergSink(BatchSink):
             self.logger.info(f"Namespace '{ns_name}' already exists")
 
         # Create pyarrow df
-        self.logger.info(f"records: {context['records']}")
         singer_schema = self.schema
         pa_schema = singer_to_pyarrow_schema(self, singer_schema)
         df = pa.Table.from_pylist(context["records"], schema=pa_schema)
