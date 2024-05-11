@@ -134,14 +134,14 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
     return pyarrow_schema
 
 
-def assign_field_ids(pa_fields: list[PyarrowField], field_id: int = 0) -> Tuple[list[PyarrowField], int]:
+def assign_pyarrow_field_ids(pa_fields: list[PyarrowField], field_id: int = 0) -> Tuple[list[PyarrowField], int]:
     """Assign field ids to the schema."""
     new_fields = []
     for field in pa_fields:
         if isinstance(field.type, pa.StructType):
             field_indices = list(range(field.type.num_fields))
             struct_fields = [field.type.field(field_i) for field_i in field_indices]
-            nested_pa_fields, field_id = assign_field_ids(struct_fields, field_id)
+            nested_pa_fields, field_id = assign_pyarrow_field_ids(struct_fields, field_id)
             new_fields.append(
                 pa.field(field.name, pa.struct(nested_pa_fields), nullable=field.nullable, metadata=field.metadata)
             )
@@ -156,7 +156,7 @@ def assign_field_ids(pa_fields: list[PyarrowField], field_id: int = 0) -> Tuple[
 def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
     """Convert singer tap json schema to pyarrow schema."""
     pa_schema = singer_to_pyarrow_schema_without_field_ids(self, singer_schema)
-    pa_fields_with_field_ids = assign_field_ids(self, pa_schema)
+    pa_fields_with_field_ids = assign_pyarrow_field_ids(self, pa_schema)
     self.logger.info(f"pa_fields_with_field_ids: {pa_fields_with_field_ids}")
     return pa.schema(pa_fields_with_field_ids)
 
