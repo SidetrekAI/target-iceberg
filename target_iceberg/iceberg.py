@@ -1,7 +1,7 @@
 from typing import cast, Any, List, Tuple, Union
 import pyarrow as pa  # type: ignore
 from pyarrow import Schema as PyarrowSchema, Field as PyarrowField
-from pyiceberg.schema import Schema as PyicebergSchema, assign_fresh_schema_ids
+from pyiceberg.schema import Schema as PyicebergSchema
 from pyiceberg.io.pyarrow import pyarrow_to_schema
 
 
@@ -157,17 +157,10 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
     """Convert singer tap json schema to pyarrow schema."""
     pa_schema = singer_to_pyarrow_schema_without_field_ids(self, singer_schema)
     pa_fields_with_field_ids, _ = assign_pyarrow_field_ids(self, pa_schema)
-    self.logger.info(f"pa_fields_with_field_ids: {pa_fields_with_field_ids}")
     return pa.schema(pa_fields_with_field_ids)
 
 
 def pyarrow_to_pyiceberg_schema(self, pa_schema: PyarrowSchema) -> PyicebergSchema:
     """Convert pyarrow schema to pyiceberg schema."""
     pyiceberg_schema = pyarrow_to_schema(pa_schema)
-    self.logger.info(f"PyIceberg Schema: {pyiceberg_schema}")
     return pyiceberg_schema
-
-    # # Overwrite the default field_ids of 1 to unique ids (this ensures the nested fields are correctly handled)
-    # pyiceberg_schema_with_field_ids = assign_fresh_schema_ids(pyiceberg_schema)
-
-    # return pyiceberg_schema_with_field_ids
