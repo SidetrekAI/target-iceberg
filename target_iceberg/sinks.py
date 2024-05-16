@@ -39,7 +39,6 @@ class IcebergSink(BatchSink):
         Args:
             context: Stream partition or context dictionary.
         """
-
         # Load the Iceberg catalog
         region = fs.resolve_s3_region(self.config.get("s3_bucket"))
         self.logger.info(f"AWS Region: {region}")
