@@ -15,7 +15,7 @@ python = ">=3.8,<4"
 singer-sdk = { version="~=0.34.1" }
 requests = "~=2.31.0"
 pyarrow = "^15.0.0"
-pyiceberg = "0.6.0rc4"
+pyiceberg = "^0.6.1"
 
 [tool.poetry.dev-dependencies]
 pytest = ">=7.4.0"
