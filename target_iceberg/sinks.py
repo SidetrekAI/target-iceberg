@@ -42,9 +42,9 @@ class IcebergSink(BatchSink):
                 if value is not None:
                     try:
                         if expected_type == 'integer':
-                            record[key] = int(value)
+                            record[key] = int(value) if value != '' else None
                         elif expected_type == 'number':
-                            record[key] = float(value)
+                            record[key] = float(value) if value != '' else None
                         elif expected_type == 'string':
                             record[key] = str(value)
                         elif expected_type == 'boolean':
@@ -52,6 +52,7 @@ class IcebergSink(BatchSink):
                         # Add more type conversions as needed
                     except ValueError:
                         self.logger.warning(f"Could not convert field '{key}' to {expected_type}. Value: {value}")
+                        record[key] = None  # Set to None if conversion fails
             else:
                 self.logger.warning(f"Field '{key}' not found in schema")
 
