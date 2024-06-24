@@ -39,6 +39,11 @@ class IcebergSink(BatchSink):
         Args:
             context: Stream partition or context dictionary.
         """
+        # Transform ordinal_position to string if it exists
+        for record in context["records"]:
+            if 'ordinal_position' in record:
+                record['ordinal_position'] = str(record['ordinal_position']) if record['ordinal_position'] is not None else None
+
         # Load the Iceberg catalog
         region = fs.resolve_s3_region(self.config.get("s3_bucket"))
         self.logger.info(f"AWS Region: {region}")
