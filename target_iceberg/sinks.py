@@ -33,16 +33,39 @@ class IcebergSink(BatchSink):
         self.stream_name = stream_name
         self.schema = schema
 
+    def validate_record(self, record):
+        for key, value in record.items():
+            if key in self.schema['properties']:
+                expected_type = self.schema['properties'][key]['type']
+                if isinstance(expected_type, list):
+                    expected_type = [t for t in expected_type if t != 'null'][0]  # Get the non-null type
+                if value is not None:
+                    try:
+                        if expected_type == 'integer':
+                            record[key] = int(value)
+                        elif expected_type == 'number':
+                            record[key] = float(value)
+                        elif expected_type == 'string':
+                            record[key] = str(value)
+                        elif expected_type == 'boolean':
+                            record[key] = bool(value)
+                        # Add more type conversions as needed
+                    except ValueError:
+                        self.logger.warning(f"Could not convert field '{key}' to {expected_type}. Value: {value}")
+            else:
+                self.logger.warning(f"Field '{key}' not found in schema")
+
     def process_batch(self, context: dict) -> None:
         """Write out any prepped records and return once fully written.
 
         Args:
             context: Stream partition or context dictionary.
         """
-        # Transform ordinal_position to string if it exists
+        self.logger.info(f"Processing batch of {len(context['records'])} records for stream {self.stream_name}")
+
+        # Validate and convert record types
         for record in context["records"]:
-            if 'ordinal_position' in record:
-                record['ordinal_position'] = str(record['ordinal_position']) if record['ordinal_position'] is not None else None
+            self.validate_record(record)
 
         # Load the Iceberg catalog
         region = fs.resolve_s3_region(self.config.get("s3_bucket"))
@@ -102,4 +125,9 @@ class IcebergSink(BatchSink):
             self.logger.info(f"Table '{table_id}' created")
 
         # Add data to the table
-        table.append(df)
+        try:
+            table.append(df)
+            self.logger.info(f"Successfully appended {len(context['records'])} records to table '{table_id}'")
+        except Exception as e:
+            self.logger.error(f"Failed to append data to table '{table_id}': {str(e)}")
+            raise
