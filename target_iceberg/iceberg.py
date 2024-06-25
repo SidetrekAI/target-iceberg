@@ -53,9 +53,14 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
             return pa.list_(get_pyarrow_schema_from_array(items=subitems, level=level))
         elif "object" in type:
             subproperties = cast(dict, items.get("properties"))
-            return pa.struct(get_pyarrow_schema_from_object(properties=subproperties, level=level + 1))
+            if subproperties is None:
+                # Treat as dictionary (string) if no properties are defined
+                return pa.string()
+            else:
+                return pa.struct(get_pyarrow_schema_from_object(properties=subproperties, level=level + 1))
         else:
             return pa.null()
+
 
     def get_pyarrow_schema_from_object(properties: dict, level: int = 0):
         """
@@ -117,16 +122,20 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
             elif "object" in type:
                 nullable = "null" in type
                 prop = val.get("properties")
-                inner_fields = get_pyarrow_schema_from_object(properties=prop, level=level + 1)
-                if not inner_fields:
-                    self.logger.warn(
-                        f"""key: {key} has no fields defined, this may cause
-                            saving parquet failure as parquet doesn't support
-                            empty/null complex types [array, structs] """
-                    )
-                fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
-
+                if prop is None:
+                    # Treat as dictionary (string) if no properties are defined
+                    fields.append(pa.field(key, pa.string(), nullable=nullable))
+                else:
+                    inner_fields = get_pyarrow_schema_from_object(properties=prop, level=level + 1)
+                    if not inner_fields:
+                        self.logger.warn(
+                            f"""key: {key} has no fields defined, this may cause
+                                saving parquet failure as parquet doesn't support
+                                empty/null complex types [array, structs] """
+                        )
+                    fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
         return fields
+
 
     properties = singer_schema["properties"]
     pyarrow_schema = pa.schema(get_pyarrow_schema_from_object(properties=properties))
