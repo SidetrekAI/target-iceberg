@@ -57,7 +57,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         else:
             return pa.null()
 
-    def get_pyarrow_schema_from_object(properties: dict, level: int = 0):
+    def get_pyarrow_schema_from_object(properties, level = 0):
         """
         Returns schema for an object.
         """
