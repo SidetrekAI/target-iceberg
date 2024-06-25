@@ -124,7 +124,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                             saving parquet failure as parquet doesn't support
                             empty/null complex types [array, structs] """
                     )
-                fields.append(pa.field(key, pa.dictionary(inner_fields), nullable=nullable))
+                fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
 
         return fields
 
