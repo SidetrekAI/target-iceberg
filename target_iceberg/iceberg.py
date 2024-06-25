@@ -62,7 +62,9 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         Returns schema for an object.
         """
         fields = []
-
+        self.logger.info(f"*********PROPERTIES: {properties}*********")
+        self.logger.info(f"*********PROPERTIES TYPE: {type(properties)}*********")
+        self.logger.info(f"*********LEVEL: {level}*********")
         for key, val in properties.items():
             if "type" in val.keys():
                 type = val["type"]
