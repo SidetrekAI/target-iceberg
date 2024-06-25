@@ -33,6 +33,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         return ret_type, formats[0] if formats else None
 
     def get_pyarrow_schema_from_array(items: dict, level: int = 0):
+        self.logger.info(f"*****GETTING SCHEMA FOR ARRAY: {properties}*****")
         type = cast(list[Any], items.get("type"))
         any_of_types = items.get("anyOf")
 
@@ -61,6 +62,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         """
         Returns schema for an object.
         """
+        self.logger.info(f"*****GETTING SCHEMA FOR OBJECT: {properties}*****")
         fields = []
 
         for key, val in properties.items():
