@@ -123,7 +123,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                 nullable = "null" in type
                 prop = val.get("properties")
                 if prop is None:
-                    # Treat as dictionary (string) if no properties are defined
+                    # Treat as JSON string if no properties are defined
                     fields.append(pa.field(key, pa.string(), nullable=nullable))
                 else:
                     inner_fields = get_pyarrow_schema_from_object(properties=prop, level=level + 1)
@@ -134,6 +134,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                                 empty/null complex types [array, structs] """
                         )
                     fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
+
         return fields
 
 
