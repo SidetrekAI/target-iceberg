@@ -124,7 +124,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                     fields.append(pa.field(key, pa.struct(nested_fields), nullable=nullable))
                 else:
                     # If no properties are specified, treat it as a generic JSON object
-                    fields.append(pa.field(key, pa.map_(pa.string(), pa.string()), nullable=nullable))
+                    fields.append(pa.field(key, pa.string(nested_fields), nullable=nullable))
 
         return fields
 
