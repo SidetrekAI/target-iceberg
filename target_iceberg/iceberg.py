@@ -124,6 +124,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                 prop = val.get("properties")
                 if prop is None:
                     # Treat as JSON string if no properties are defined
+                    self.logger.info(f"Treating key: {key} as JSON string due to no properties")
                     fields.append(pa.field(key, pa.string(), nullable=nullable))
                 else:
                     inner_fields = get_pyarrow_schema_from_object(properties=prop, level=level + 1)
