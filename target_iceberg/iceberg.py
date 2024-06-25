@@ -57,7 +57,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         else:
             return pa.null()
 
-    def get_pyarrow_schema_from_object(properties, level = 0):
+    def get_pyarrow_schema_from_object(properties: dict, level: int = 0):
         """
         Returns schema for an object.
         """
@@ -114,17 +114,15 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                             exact item types for the list, if not null."""
                     )
                     fields.append(pa.field(key, pa.list_(pa.null()), nullable=nullable))
-            elif "object" in type:
-                nullable = "null" in type
-                prop = val.get("properties")
-                inner_fields = get_pyarrow_schema_from_object(properties=prop, level=level + 1)
-                if not inner_fields:
-                    self.logger.warn(
-                        f"""key: {key} has no fields defined, this may cause
-                            saving parquet failure as parquet doesn't support
-                            empty/null complex types [array, structs] """
-                    )
-                fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
+            elif type == "object" or val.get("type") == "object":
+                # Handle nested JSON data
+                nested_properties = val.get("properties", {})
+                if nested_properties:
+                    nested_fields = get_pyarrow_schema_from_object(nested_properties, level + 1)
+                    fields.append(pa.field(key, pa.struct(nested_fields), nullable=nullable))
+                else:
+                    # If no properties are specified, treat it as a generic JSON object
+                    fields.append(pa.field(key, pa.map_(pa.string(), pa.string()), nullable=nullable))
 
         return fields
 
