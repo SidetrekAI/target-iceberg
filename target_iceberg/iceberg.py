@@ -53,65 +53,80 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
             return pa.list_(get_pyarrow_schema_from_array(items=subitems, level=level))
         elif "object" in type:
             subproperties = cast(dict, items.get("properties"))
-            if subproperties is None:
-                # Treat as dictionary (string) if no properties are defined
-                return pa.string()
-            else:
-                return pa.struct(get_pyarrow_schema_from_object(properties=subproperties, level=level + 1))
+            return pa.struct(get_pyarrow_schema_from_object(properties=subproperties, level=level + 1))
         else:
             return pa.null()
 
-
     def get_pyarrow_schema_from_object(properties: dict, level: int = 0):
         """
-        Returns PyArrow schema fields for an object based on properties.
+        Returns schema for an object.
         """
         fields = []
 
         for key, val in properties.items():
-            if "type" in val:
-                type_ = val["type"]
-                format_ = val.get("format")
-            elif "anyOf" in val:
-                type_, format_ = process_anyof_schema(val["anyOf"])
+            if "type" in val.keys():
+                type = val["type"]
+                format = val.get("format")
+            elif "anyOf" in val.keys():
+                type, format = process_anyof_schema(val["anyOf"])
             else:
-                type_ = ["string", "null"]
+                self.logger.warning("type information not given")
+                type = ["string", "null"]
 
-            nullable = "null" in type_
-
-            if "integer" in type_:
+            if "integer" in type:
+                nullable = "null" in type
                 fields.append(pa.field(key, pa.int64(), nullable=nullable))
-            elif "number" in type_:
+            elif "number" in type:
+                nullable = "null" in type
                 fields.append(pa.field(key, pa.float64(), nullable=nullable))
-            elif "boolean" in type_:
+            elif "boolean" in type:
+                nullable = "null" in type
                 fields.append(pa.field(key, pa.bool_(), nullable=nullable))
-            elif "string" in type_:
-                if format_ and level == 0:
-                    if format_ == "date":
+            elif "string" in type:
+                nullable = "null" in type
+                if format and level == 0:
+                    # this is done to handle explicit datetime conversion
+                    # which happens only at level 1 of a record
+                    if format == "date":
                         fields.append(pa.field(key, pa.date64(), nullable=nullable))
-                    elif format_ == "time":
+                    elif format == "time":
                         fields.append(pa.field(key, pa.time64(), nullable=nullable))
                     else:
                         fields.append(pa.field(key, pa.timestamp("us", tz="UTC"), nullable=nullable))
                 else:
                     fields.append(pa.field(key, pa.string(), nullable=nullable))
-            elif "array" in type_:
+            elif "array" in type:
+                nullable = "null" in type
                 items = val.get("items")
                 if items:
-                    item_type = get_pyarrow_schema_from_object(items, level=level + 1)
+                    item_type = get_pyarrow_schema_from_array(items=items, level=level)
+                    if item_type == pa.null():
+                        self.logger.warn(
+                            f"""key: {key} is defined as list of null, while this would be
+                                correct for list of all null but it is better to define
+                                exact item types for the list, if not null."""
+                        )
                     fields.append(pa.field(key, pa.list_(item_type), nullable=nullable))
                 else:
+                    self.logger.warn(
+                        f"""key: {key} is defined as list of null, while this would be
+                            correct for list of all null but it is better to define
+                            exact item types for the list, if not null."""
+                    )
                     fields.append(pa.field(key, pa.list_(pa.null()), nullable=nullable))
-            elif "object" in type_:
+            elif "object" in type:
+                nullable = "null" in type
                 prop = val.get("properties")
-                if prop is None:
-                    fields.append(pa.field(key, pa.string(), nullable=nullable))  # Treat as string if properties are undefined
-                else:
-                    inner_fields = get_pyarrow_schema_from_object(prop, level=level + 1)
-                    fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
+                inner_fields = get_pyarrow_schema_from_object(properties=prop, level=level + 1)
+                if not inner_fields:
+                    self.logger.warn(
+                        f"""key: {key} has no fields defined, this may cause
+                            saving parquet failure as parquet doesn't support
+                            empty/null complex types [array, structs] """
+                    )
+                fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
 
         return fields
-
 
     properties = singer_schema["properties"]
     pyarrow_schema = pa.schema(get_pyarrow_schema_from_object(properties=properties))
