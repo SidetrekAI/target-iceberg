@@ -150,7 +150,7 @@ def assign_pyarrow_field_ids(self, pa_fields: List[PyarrowField], field_id: int 
 def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
     """Convert singer tap json schema to pyarrow schema."""
     pa_schema = singer_to_pyarrow_schema_without_field_ids(self, singer_schema)
-    pa_fields_with_field_ids, _ = assign_pyarrow_field_ids(self, pa_schema.fields)
+    pa_fields_with_field_ids, _ = assign_pyarrow_field_ids(self, pa_schema)
     return pa.schema(pa_fields_with_field_ids)
 
 
