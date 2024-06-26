@@ -166,6 +166,7 @@ def assign_pyarrow_field_ids(self, pa_fields: List[PyarrowField], field_id: int 
 def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
     """Convert singer tap json schema to pyarrow schema."""
     pa_schema = singer_to_pyarrow_schema_without_field_ids(self, singer_schema)
+    self.logger.info(f"*****pyarrow_schema: {pa_schema}*****")
     pa_fields_with_field_ids, _ = assign_pyarrow_field_ids(self, pa_schema)
     return pa.schema(pa_fields_with_field_ids)
 
@@ -177,4 +178,5 @@ def pyarrow_to_pyiceberg_schema(self, pa_schema: PyarrowSchema) -> PyicebergSche
     pa_schema_with_field_ids = pa.schema(pa_fields_with_field_ids)
     
     pyiceberg_schema = pyarrow_to_schema(pa_schema_with_field_ids)
+    self.logger.info(f"*****pyiceberg_schema: {pyiceberg_schema}*****")
     return pyiceberg_schema
