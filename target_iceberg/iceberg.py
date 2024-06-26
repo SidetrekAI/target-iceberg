@@ -139,6 +139,12 @@ def assign_pyarrow_field_ids(self, pa_fields: List[PyarrowField], field_id: int 
             new_fields.append(
                 pa.field(field.name, pa.struct(nested_pa_fields), nullable=field.nullable, metadata=field.metadata)
             )
+        elif isinstance(field.type, pa.ListType):
+            nested_field = field.type.value_field
+            nested_pa_field, field_id = assign_pyarrow_field_ids(self, [nested_field], field_id)
+            new_fields.append(
+                pa.field(field.name, pa.list_(nested_pa_field[0].type), nullable=field.nullable, metadata=field.metadata)
+            )
         else:
             field_id += 1
             field_with_metadata = field.with_metadata({"PARQUET:field_id": f"{field_id}"})
