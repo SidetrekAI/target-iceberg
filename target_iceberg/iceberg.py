@@ -93,7 +93,6 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                         )
                     fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
             elif "integer" in type:
-                self.logger.info(f"*****check key and val. ** key: {key} **val: {val} **level: {level}*****")
                 nullable = "null" in type
                 fields.append(pa.field(key, pa.int64(), nullable=nullable))
             elif "number" in type:
