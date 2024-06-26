@@ -82,6 +82,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                 self.logger.info(f"*****check properties. ** prop: {prop} **level: {level}*****")
                 if prop is None:
                     inner_fields = [pa.field("empty", pa.null())]
+                    self.logger.info(f"******* inner_fields: {inner_fields} **level: {level}*****")
                 else:
                     inner_fields = get_pyarrow_schema_from_object(prop, level + 1)
                 if not inner_fields:
