@@ -45,10 +45,10 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
             return pa.bool_()
         elif "array" in type:
             subitems = cast(dict, items.get("items"))
-            return pa.list_(get_pyarrow_schema_from_array(items=subitems, level=level))
+            return pa.list_(get_pyarrow_schema_from_array(subitems, level=level))
         elif "object" in type:
             subproperties = cast(dict, items.get("properties"))
-            return pa.struct(get_pyarrow_schema_from_object(properties=subproperties, level=level + 1))
+            return pa.struct(get_pyarrow_schema_from_object(subproperties, level=level + 1))
         else:
             return pa.null()
 
@@ -56,7 +56,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         fields = []
 
         if not properties:
-            fields.append(pa.field("unknown_field", pa.list_(pa.null())))
+            fields.append(pa.field("empty", pa.list_(pa.null())))
             return fields
 
         for key, val in properties.items():
@@ -72,7 +72,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
             if "object" in type:
                 nullable = "null" in type
                 prop = val.get("properties")
-                inner_fields = get_pyarrow_schema_from_object(properties=prop, level=level + 1)
+                inner_fields = get_pyarrow_schema_from_object(prop, level + 1)
                 if not inner_fields:
                     self.logger.warn(
                         f"""key: {key} has no fields defined, this may cause
@@ -104,7 +104,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                 nullable = "null" in type
                 items = val.get("items")
                 if items:
-                    item_type = get_pyarrow_schema_from_array(items=items, level=level)
+                    item_type = get_pyarrow_schema_from_array(items, level)
                     if item_type == pa.null():
                         self.logger.warn(
                             f"""key: {key} is defined as list of null, while this would be
@@ -123,12 +123,12 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         return fields
 
     properties = singer_schema["properties"]
-    pyarrow_schema = pa.schema(get_pyarrow_schema_from_object(properties=properties))
+    pyarrow_schema = pa.schema(get_pyarrow_schema_from_object(properties))
 
     return pyarrow_schema
 
 
-def assign_pyarrow_field_ids(self, pa_fields: list[PyarrowField], field_id: int = 0) -> Tuple[list[PyarrowField], int]:
+def assign_pyarrow_field_ids(self, pa_fields: List[PyarrowField], field_id: int = 0) -> Tuple[List[PyarrowField], int]:
     """Assign field ids to the schema."""
     new_fields = []
     for field in pa_fields:
@@ -150,14 +150,14 @@ def assign_pyarrow_field_ids(self, pa_fields: list[PyarrowField], field_id: int 
 def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
     """Convert singer tap json schema to pyarrow schema."""
     pa_schema = singer_to_pyarrow_schema_without_field_ids(self, singer_schema)
-    pa_fields_with_field_ids, _ = assign_pyarrow_field_ids(self, pa_schema)
+    pa_fields_with_field_ids, _ = assign_pyarrow_field_ids(self, pa_schema.fields)
     return pa.schema(pa_fields_with_field_ids)
 
 
 def pyarrow_to_pyiceberg_schema(self, pa_schema: PyarrowSchema) -> PyicebergSchema:
     """Convert pyarrow schema to pyiceberg schema."""
     # Ensure that the schema has field-ids assigned
-    pa_fields_with_field_ids, _ = assign_pyarrow_field_ids(self, pa_schema)
+    pa_fields_with_field_ids, _ = assign_pyarrow_field_ids(self, pa_schema.fields)
     pa_schema_with_field_ids = pa.schema(pa_fields_with_field_ids)
     
     pyiceberg_schema = pyarrow_to_schema(pa_schema_with_field_ids)
