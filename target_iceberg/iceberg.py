@@ -62,9 +62,9 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         Returns schema for an object.
         """
         fields = []
-        # self.logger.info(f"*********PROPERTIES: {properties}*********")
-        # self.logger.info(f"*********LEVEL: {level}*********")
+        
         if properties is None:
+            nullable = "null" in type
             fields.append(pa.field(0, pa.list_(pa.null()), nullable=nullable))
             return fields
         for key, val in properties.items():
