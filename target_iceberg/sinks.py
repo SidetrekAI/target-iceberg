@@ -79,7 +79,7 @@ class IcebergSink(BatchSink):
         # Create pyarrow df
         singer_schema = self.schema
         pa_schema = singer_to_pyarrow_schema(self, singer_schema)
-        df = pa.Table.from_pylist(context["records"], schema=pa_schema)
+        df = pa.Table.from_pylist(context["records"], schema=[pa_schema])
 
         # Create a table if it doesn't exist
         table_name = self.stream_name
