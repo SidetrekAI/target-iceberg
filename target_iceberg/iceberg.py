@@ -64,7 +64,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         fields = []
         
         if properties is None:
-            fields.append(pa.field(((0).to_bytes(2, byteorder ='big')), pa.list_(pa.null())))
+            fields.append(pa.field(((0).to_bytes(2, byteorder ='big')), pa.list_(pa.null()), nullable=True))
             return fields
         for key, val in properties.items():
             if "type" in val.keys():
