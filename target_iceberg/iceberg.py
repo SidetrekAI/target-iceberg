@@ -156,5 +156,9 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
 
 def pyarrow_to_pyiceberg_schema(self, pa_schema: PyarrowSchema) -> PyicebergSchema:
     """Convert pyarrow schema to pyiceberg schema."""
-    pyiceberg_schema = pyarrow_to_schema(pa_schema)
+    # Ensure that the schema has field-ids assigned
+    pa_fields_with_field_ids, _ = assign_pyarrow_field_ids(self, pa_schema)
+    pa_schema_with_field_ids = pa.schema(pa_fields_with_field_ids)
+    
+    pyiceberg_schema = pyarrow_to_schema(pa_schema_with_field_ids)
     return pyiceberg_schema
