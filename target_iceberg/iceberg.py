@@ -159,19 +159,33 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
     
 #     return new_fields, field_id
 
-def assign_pyarrow_field_ids(self, pa_schema: PyarrowSchema, field_id: int = 0) -> Tuple[PyarrowSchema, int]:
-    self.logger.info(f"Type of pa_schema: {type(pa_schema)}")
-    self.logger.info(f"Value of pa_schema: {pa_schema}")
-    new_fields = []
-    for field in pa_schema:
-        field_id += 1
-        if pa.types.is_struct(field.type):
-            nested_schema, field_id = assign_pyarrow_field_ids(field.type, field_id)
-            new_field = pa.field(field.name, nested_schema, nullable=field.nullable, metadata={"PARQUET:field_id": str(field_id)})
-        else:
-            new_field = field.with_metadata({"PARQUET:field_id": str(field_id)})
-        new_fields.append(new_field)
-    return pa.schema(new_fields), field_id
+def assign_pyarrow_field_ids(self, pa_schema_or_type: Union[PyarrowSchema, pa.DataType], field_id: int = 0) -> Tuple[Union[PyarrowSchema, pa.DataType], int]:
+    
+    if isinstance(pa_schema_or_type, pa.Schema):
+        new_fields = []
+        for field in pa_schema_or_type:
+            field_id += 1
+            if pa.types.is_struct(field.type):
+                nested_type, field_id = self.assign_pyarrow_field_ids(field.type, field_id)
+                new_field = pa.field(field.name, nested_type, nullable=field.nullable, metadata={"PARQUET:field_id": str(field_id)})
+            else:
+                new_field = field.with_metadata({"PARQUET:field_id": str(field_id)})
+            new_fields.append(new_field)
+        return pa.schema(new_fields), field_id
+    elif isinstance(pa_schema_or_type, pa.StructType):
+        new_fields = []
+        for field in pa_schema_or_type:
+            field_id += 1
+            if pa.types.is_struct(field.type):
+                nested_type, field_id = self.assign_pyarrow_field_ids(field.type, field_id)
+                new_field = pa.field(field.name, nested_type, nullable=field.nullable, metadata={"PARQUET:field_id": str(field_id)})
+            else:
+                new_field = field.with_metadata({"PARQUET:field_id": str(field_id)})
+            new_fields.append(new_field)
+        return pa.struct(new_fields), field_id
+    else:
+        # For non-struct types, just return as is
+        return pa_schema_or_type, field_id
 
 
 def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
