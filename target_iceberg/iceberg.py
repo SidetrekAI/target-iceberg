@@ -140,7 +140,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
     return pyarrow_schema
 
 
-def assign_pyarrow_field_ids(self, pa_fields: List[PyarrowField], field_id: int = 0) -> Tuple[List[PyarrowField], int]:
+def assign_pyarrow_field_ids(self, pa_fields: list[PyarrowField], field_id: int = 0) -> Tuple[list[PyarrowField], int]:
     """Assign field ids to the schema."""
     new_fields = []
     for field in pa_fields:
@@ -150,12 +150,6 @@ def assign_pyarrow_field_ids(self, pa_fields: List[PyarrowField], field_id: int 
             nested_pa_fields, field_id = assign_pyarrow_field_ids(self, struct_fields, field_id)
             new_fields.append(
                 pa.field(field.name, pa.struct(nested_pa_fields), nullable=field.nullable, metadata=field.metadata)
-            )
-        elif isinstance(field.type, pa.ListType):
-            nested_field = field.type.value_field
-            nested_pa_field, field_id = assign_pyarrow_field_ids(self, [nested_field], field_id)
-            new_fields.append(
-                pa.field(field.name, pa.list_(nested_pa_field[0].type), nullable=field.nullable, metadata=field.metadata)
             )
         else:
             field_id += 1
