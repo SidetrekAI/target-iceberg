@@ -59,9 +59,10 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
             self.logger.info(f"*****properties is invalid. ** Properties: {properties} **Level: {level}*****")
             # fields.append(pa.field("empty", pa.list_(pa.null())))
             # fields.append(pa.field("empty", pa.struct(pa.null())))
-            fields.append(pa.field("empty", pa.string()))
-            self.logger.info(f"*****Fields: {fields}*****")
-            return fields
+            #fields.append(pa.field("empty", pa.string()))
+            #self.logger.info(f"*****Fields: {fields}*****")
+            #return fields
+            return None
 
         for key, val in properties.items():
             if "type" in val.keys():
