@@ -62,10 +62,13 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         Returns schema for an object.
         """
         fields = []
+
+        if not properties:
+            return [pa.field("empty", pa.struct([]))]
         
-        if properties is None:
-            fields.append(pa.field(((0).to_bytes(2, byteorder ='big')), pa.list_(pa.null()), nullable=True))
-            return fields
+        # if properties is None:
+        #     fields.append(pa.field(((0).to_bytes(2, byteorder ='big')), pa.list_(pa.null()), nullable=True))
+        #     return fields
         for key, val in properties.items():
             if "type" in val.keys():
                 type = val["type"]
