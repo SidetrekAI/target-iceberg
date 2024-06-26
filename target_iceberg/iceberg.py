@@ -164,7 +164,7 @@ def assign_pyarrow_field_ids(self, pa_schema: PyarrowSchema, field_id: int = 0) 
     for field in pa_schema:
         field_id += 1
         if pa.types.is_struct(field.type):
-            nested_schema, field_id = self.assign_pyarrow_field_ids(field.type, field_id)
+            nested_schema, field_id = assign_pyarrow_field_ids(field.type, field_id)
             new_field = pa.field(field.name, nested_schema, nullable=field.nullable, metadata={"PARQUET:field_id": str(field_id)})
         else:
             new_field = field.with_metadata({"PARQUET:field_id": str(field_id)})
