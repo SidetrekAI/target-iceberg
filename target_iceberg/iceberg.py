@@ -55,8 +55,8 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
     def get_pyarrow_schema_from_object(properties: dict, level: int = 0):
         fields = []
 
-        if not properties.items():
-            self.logger.info(f"*****properties.item is invalid. **Level: {level} **Empty object schema detected for: {properties}*****")
+        if not properties:
+            self.logger.info(f"*****properties is invalid. ** Properties: {properties} **Level: {level} **Empty object schema detected for: {properties}*****")
             fields.append(pa.field("empty", pa.list_(pa.null())))
             return fields
 
