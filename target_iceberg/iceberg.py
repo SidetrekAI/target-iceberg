@@ -55,77 +55,75 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
     def get_pyarrow_schema_from_object(properties: dict, level: int = 0):
         fields = []
 
-        # if properties is None:
-        #     self.logger.info(f"*****properties is invalid. ** Properties: {properties} **Level: {level}*****")
-        #     # fields.append(pa.field("empty", pa.list_(pa.null())))
-        #     # fields.append(pa.field("empty", pa.struct(pa.null())))
-        #     #fields.append(pa.field("empty", pa.string()))
-        #     #self.logger.info(f"*****Fields: {fields}*****")
-        #     #return fields
-        #     return None
-        if properties:
-            for key, val in properties.items():
-                if "type" in val.keys():
-                    type = val["type"]
-                    format = val.get("format")
-                elif "anyOf" in val.keys():
-                    type, format = process_anyof_schema(val["anyOf"])
-                else:
-                    self.logger.warning("type information not given")
-                    type = ["string", "null"]
+        if properties is None:
+            self.logger.info(f"*****properties is invalid. ** Properties: {properties} **Level: {level}*****")
+            # fields.append(pa.field("empty", pa.list_(pa.null())))
+            # fields.append(pa.field("empty", pa.struct(pa.null())))
+            #fields.append(pa.field("empty", pa.string()))
+            self.logger.info(f"*****Fields: {fields}*****")
+            return fields
+            # return None
+        
+        for key, val in properties.items():
+            if "type" in val.keys():
+                type = val["type"]
+                format = val.get("format")
+            elif "anyOf" in val.keys():
+                type, format = process_anyof_schema(val["anyOf"])
+            else:
+                self.logger.warning("type information not given")
+                type = ["string", "null"]
 
-                if "object" in type:
-                    nullable = "null" in type
-                    prop = val.get("properties")
-                    inner_fields = get_pyarrow_schema_from_object(prop, level + 1)
-                    if not inner_fields:
-                        self.logger.warn(
-                            f"""key: {key} has no fields defined, this may cause
-                                saving parquet failure as parquet doesn't support
-                                empty/null complex types [array, structs] """
-                        )
-                    fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
-                    # if inner_fields:
-                    #     fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
-                elif "integer" in type:
-                    nullable = "null" in type
-                    fields.append(pa.field(key, pa.int64(), nullable=nullable))
-                elif "number" in type:
-                    nullable = "null" in type
-                    fields.append(pa.field(key, pa.float64(), nullable=nullable))
-                elif "boolean" in type:
-                    nullable = "null" in type
-                    fields.append(pa.field(key, pa.bool_(), nullable=nullable))
-                elif "string" in type:
-                    nullable = "null" in type
-                    if format and level == 0:
-                        if format == "date":
-                            fields.append(pa.field(key, pa.date64(), nullable=nullable))
-                        elif format == "time":
-                            fields.append(pa.field(key, pa.time64(), nullable=nullable))
-                        else:
-                            fields.append(pa.field(key, pa.timestamp("us", tz="UTC"), nullable=nullable))
+            if "object" in type:
+                nullable = "null" in type
+                prop = val.get("properties")
+                inner_fields = get_pyarrow_schema_from_object(prop, level + 1)
+                if not inner_fields:
+                    self.logger.warn(
+                        f"""key: {key} has no fields defined, this may cause
+                            saving parquet failure as parquet doesn't support
+                            empty/null complex types [array, structs] """
+                    )
+                fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
+            elif "integer" in type:
+                nullable = "null" in type
+                fields.append(pa.field(key, pa.int64(), nullable=nullable))
+            elif "number" in type:
+                nullable = "null" in type
+                fields.append(pa.field(key, pa.float64(), nullable=nullable))
+            elif "boolean" in type:
+                nullable = "null" in type
+                fields.append(pa.field(key, pa.bool_(), nullable=nullable))
+            elif "string" in type:
+                nullable = "null" in type
+                if format and level == 0:
+                    if format == "date":
+                        fields.append(pa.field(key, pa.date64(), nullable=nullable))
+                    elif format == "time":
+                        fields.append(pa.field(key, pa.time64(), nullable=nullable))
                     else:
-                        fields.append(pa.field(key, pa.string(), nullable=nullable))
-                elif "array" in type:
-                    nullable = "null" in type
-                    items = val.get("items")
-                    if items:
-                        item_type = get_pyarrow_schema_from_array(items, level)
-                        if item_type == pa.null():
-                            self.logger.warn(
-                                f"""key: {key} is defined as list of null, while this would be
-                                    correct for list of all null but it is better to define
-                                    exact item types for the list, if not null."""
-                            )
-                        fields.append(pa.field(key, pa.list_(item_type), nullable=nullable))
-                    else:
+                        fields.append(pa.field(key, pa.timestamp("us", tz="UTC"), nullable=nullable))
+                else:
+                    fields.append(pa.field(key, pa.string(), nullable=nullable))
+            elif "array" in type:
+                nullable = "null" in type
+                items = val.get("items")
+                if items:
+                    item_type = get_pyarrow_schema_from_array(items, level)
+                    if item_type == pa.null():
                         self.logger.warn(
                             f"""key: {key} is defined as list of null, while this would be
                                 correct for list of all null but it is better to define
                                 exact item types for the list, if not null."""
                         )
-                        fields.append(pa.field(key, pa.list_(pa.null()), nullable=nullable))
+                    fields.append(pa.field(key, pa.list_(item_type), nullable=nullable))
+                else:
+                    self.logger.warn(
+                        f"""key: {key} is defined as list of null, while this would be
+                            correct for list of all null but it is better to define
+                            exact item types for the list, if not null."""
+                    )
+                    fields.append(pa.field(key, pa.list_(pa.null()), nullable=nullable))
 
         return fields
 
