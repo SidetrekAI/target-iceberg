@@ -5,15 +5,10 @@ from pyiceberg.schema import Schema as PyicebergSchema
 from pyiceberg.io.pyarrow import pyarrow_to_schema
 
 
-# Borrowed from https://github.com/crowemi/target-s3/blob/main/target_s3/formats/format_parquet.py
 def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> PyarrowSchema:
     """Convert singer tap json schema to pyarrow schema."""
 
     def process_anyof_schema(anyOf: List) -> Tuple[List, Union[str, None]]:
-        """This function takes in original array of anyOf's schema detected
-        and reduces it to the detected schema, based on rules, right now
-        just detects whether it is string or not.
-        """
         types, formats = [], []
         for val in anyOf:
             typ = val.get("type")
@@ -58,17 +53,11 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
             return pa.null()
 
     def get_pyarrow_schema_from_object(properties: dict, level: int = 0):
-        """
-        Returns schema for an object.
-        """
         fields = []
 
         if not properties:
             return [pa.field("empty", pa.struct([]))]
-        
-        # if properties is None:
-        #     fields.append(pa.field(((0).to_bytes(2, byteorder ='big')), pa.list_(pa.null()), nullable=True))
-        #     return fields
+
         for key, val in properties.items():
             if "type" in val.keys():
                 type = val["type"]
@@ -102,8 +91,6 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
             elif "string" in type:
                 nullable = "null" in type
                 if format and level == 0:
-                    # this is done to handle explicit datetime conversion
-                    # which happens only at level 1 of a record
                     if format == "date":
                         fields.append(pa.field(key, pa.date64(), nullable=nullable))
                     elif format == "time":
@@ -132,7 +119,6 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                     )
                     fields.append(pa.field(key, pa.list_(pa.null()), nullable=nullable))
 
-
         return fields
 
     properties = singer_schema["properties"]
@@ -158,34 +144,6 @@ def assign_pyarrow_field_ids(self, pa_fields: list[PyarrowField], field_id: int 
             new_fields.append(field_with_metadata)
     
     return new_fields, field_id
-
-# def assign_pyarrow_field_ids(self, pa_schema_or_type: Union[PyarrowSchema, pa.DataType], field_id: int = 0) -> Tuple[Union[PyarrowSchema, pa.DataType], int]:
-    
-#     if isinstance(pa_schema_or_type, pa.Schema):
-#         new_fields = []
-#         for field in pa_schema_or_type:
-#             field_id += 1
-#             if pa.types.is_struct(field.type):
-#                 nested_type, field_id = assign_pyarrow_field_ids(field.type, field_id)
-#                 new_field = pa.field(field.name, nested_type, nullable=field.nullable, metadata={"PARQUET:field_id": str(field_id)})
-#             else:
-#                 new_field = field.with_metadata({"PARQUET:field_id": str(field_id)})
-#             new_fields.append(new_field)
-#         return pa.schema(new_fields), field_id
-#     elif isinstance(pa_schema_or_type, pa.StructType):
-#         new_fields = []
-#         for field in pa_schema_or_type:
-#             field_id += 1
-#             if pa.types.is_struct(field.type):
-#                 nested_type, field_id = assign_pyarrow_field_ids(field.type, field_id)
-#                 new_field = pa.field(field.name, nested_type, nullable=field.nullable, metadata={"PARQUET:field_id": str(field_id)})
-#             else:
-#                 new_field = field.with_metadata({"PARQUET:field_id": str(field_id)})
-#             new_fields.append(new_field)
-#         return pa.struct(new_fields), field_id
-#     else:
-#         # For non-struct types, just return the type as is with the current field_id
-#         return pa_schema_or_type, field_id
 
 
 def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
