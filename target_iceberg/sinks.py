@@ -1,6 +1,3 @@
-"""Iceberg target sink class, which handles writing streams."""
-
-from __future__ import annotations
 import os
 from typing import cast, Any
 from singer_sdk.sinks import BatchSink
@@ -79,7 +76,15 @@ class IcebergSink(BatchSink):
         # Create pyarrow df
         singer_schema = self.schema
         pa_schema = singer_to_pyarrow_schema(self, singer_schema)
-        df = pa.Table.from_pylist(context["records"], schema=pa_schema)
+
+        # Log the records
+        self.logger.info(f"Records: {context['records']}")
+
+        try:
+            df = pa.Table.from_pylist(context["records"], schema=pa_schema)
+        except pa.lib.ArrowTypeError as e:
+            self.logger.error(f"Error converting to PyArrow Table: {e}")
+            raise
 
         # Create a table if it doesn't exist
         table_name = self.stream_name

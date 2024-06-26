@@ -167,3 +167,4 @@ def pyarrow_to_pyiceberg_schema(self, pa_schema: PyarrowSchema) -> PyicebergSche
     pyiceberg_schema = pyarrow_to_schema(pa_schema_with_field_ids)
     self.logger.info(f"*****pyiceberg_schema: {pyiceberg_schema}*****")
     return pyiceberg_schema
+
