@@ -55,17 +55,17 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
     def get_pyarrow_schema_from_object(properties: dict, level: int = 0):
         fields = []
 
-        if properties is None:
-            # self.logger.info(f"*****properties is invalid. ** Properties: {properties} **Level: {level}*****")
-            # fields.append(pa.field("empty", pa.list_(pa.null())))
-            # fields.append(pa.field("empty", pa.struct(pa.null())))
-            #fields.append(pa.field("empty", pa.string()))
-            # fields.apppend(pa.field(pa.null()))
-            #fields.append(pa.field("", pa.null()))
-            # self.logger.info(f"*****Fields: {fields}*****")
-            fields.append(pa.field("unknown", pa.string()))
-            return fields
-            #return None
+        # if properties is None:
+        #     # self.logger.info(f"*****properties is invalid. ** Properties: {properties} **Level: {level}*****")
+        #     # fields.append(pa.field("empty", pa.list_(pa.null())))
+        #     # fields.append(pa.field("empty", pa.struct(pa.null())))
+        #     #fields.append(pa.field("empty", pa.string()))
+        #     # fields.apppend(pa.field(pa.null()))
+        #     #fields.append(pa.field("", pa.null()))
+        #     # self.logger.info(f"*****Fields: {fields}*****")
+        #     fields.append(pa.field("unknown", pa.string()))
+        #     return fields
+        #     #return None
         
         for key, val in properties.items():
             if "type" in val.keys():
@@ -80,15 +80,18 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
             if "object" in type:
                 nullable = "null" in type
                 prop = val.get("properties")
-        
-                inner_fields = get_pyarrow_schema_from_object(prop, level + 1)
-                if not inner_fields:
-                    self.logger.warn(
-                        f"""key: {key} has no fields defined, this may cause
-                            saving parquet failure as parquet doesn't support
-                            empty/null complex types [array, structs] """
-                    )
-                fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
+
+                if not prop:
+                    fields.append(pa.field(key, pa.string()))
+                else:
+                    inner_fields = get_pyarrow_schema_from_object(prop, level + 1)
+                    if not inner_fields:
+                        self.logger.warn(
+                            f"""key: {key} has no fields defined, this may cause
+                                saving parquet failure as parquet doesn't support
+                                empty/null complex types [array, structs] """
+                        )
+                    fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
             elif "integer" in type:
                 self.logger.info(f"*****check key and val. ** key: {key} **val: {val} **level: {level}*****")
                 nullable = "null" in type
