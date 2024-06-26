@@ -166,7 +166,7 @@ def assign_pyarrow_field_ids(self, pa_schema_or_type: Union[PyarrowSchema, pa.Da
         for field in pa_schema_or_type:
             field_id += 1
             if pa.types.is_struct(field.type):
-                nested_type, field_id = assign_pyarrow_field_ids(field.type, field_id)
+                nested_type, field_id = self.assign_pyarrow_field_ids(field.type, field_id)
                 new_field = pa.field(field.name, nested_type, nullable=field.nullable, metadata={"PARQUET:field_id": str(field_id)})
             else:
                 new_field = field.with_metadata({"PARQUET:field_id": str(field_id)})
@@ -177,14 +177,14 @@ def assign_pyarrow_field_ids(self, pa_schema_or_type: Union[PyarrowSchema, pa.Da
         for field in pa_schema_or_type:
             field_id += 1
             if pa.types.is_struct(field.type):
-                nested_type, field_id = assign_pyarrow_field_ids(field.type, field_id)
+                nested_type, field_id = self.assign_pyarrow_field_ids(field.type, field_id)
                 new_field = pa.field(field.name, nested_type, nullable=field.nullable, metadata={"PARQUET:field_id": str(field_id)})
             else:
                 new_field = field.with_metadata({"PARQUET:field_id": str(field_id)})
             new_fields.append(new_field)
         return pa.struct(new_fields), field_id
     else:
-        # For non-struct types, just return as is
+        # For non-struct types, just return the type as is with the current field_id
         return pa_schema_or_type, field_id
 
 
