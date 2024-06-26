@@ -53,19 +53,8 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
             return pa.null()
 
     def get_pyarrow_schema_from_object(properties: dict, level: int = 0):
-        fields = []
 
-        # if properties is None:
-        #     # self.logger.info(f"*****properties is invalid. ** Properties: {properties} **Level: {level}*****")
-        #     # fields.append(pa.field("empty", pa.list_(pa.null())))
-        #     # fields.append(pa.field("empty", pa.struct(pa.null())))
-        #     #fields.append(pa.field("empty", pa.string()))
-        #     # fields.apppend(pa.field(pa.null()))
-        #     #fields.append(pa.field("", pa.null()))
-        #     # self.logger.info(f"*****Fields: {fields}*****")
-        #     fields.append(pa.field("unknown", pa.string()))
-        #     return fields
-        #     #return None
+        fields = []
         
         for key, val in properties.items():
             if "type" in val.keys():
@@ -82,7 +71,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                 prop = val.get("properties")
 
                 if not prop:
-                    fields.append(pa.field(key, pa.string()))
+                    fields.append(pa.field(key, pa.string(), nullable=nullable))
                 else:
                     inner_fields = get_pyarrow_schema_from_object(prop, level + 1)
                     if not inner_fields:
@@ -135,6 +124,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         return fields
 
     properties = singer_schema["properties"]
+    self.logger.info(f"*********properties: {properties}*********")
     pyarrow_schema = pa.schema(get_pyarrow_schema_from_object(properties))
 
     return pyarrow_schema
@@ -164,6 +154,7 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
     pa_schema = singer_to_pyarrow_schema_without_field_ids(self, singer_schema)
     self.logger.info(f"*****pyarrow_schema: {pa_schema}*****")
     pa_fields_with_field_ids, _ = assign_pyarrow_field_ids(self, pa_schema)
+    self.logger.info(f"*****pyarrow field with field ids: {pa_fields_with_field_ids}*****")
     return pa.schema(pa_fields_with_field_ids)
 
 
