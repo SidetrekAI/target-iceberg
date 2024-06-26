@@ -87,12 +87,12 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                     # self.logger.info(f"******* inner_fields: {inner_fields} **level: {level}*****")
                 else:
                     inner_fields = get_pyarrow_schema_from_object(prop, level + 1)
-                if not inner_fields:
-                    self.logger.warn(
-                        f"""key: {key} has no fields defined, this may cause
-                            saving parquet failure as parquet doesn't support
-                            empty/null complex types [array, structs] """
-                    )
+                # if not inner_fields:
+                #     self.logger.warn(
+                #         f"""key: {key} has no fields defined, this may cause
+                #             saving parquet failure as parquet doesn't support
+                #             empty/null complex types [array, structs] """
+                #     )
                 fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
             elif "integer" in type:
                 self.logger.info(f"*****check key and val. ** key: {key} **val: {val} **level: {level}*****")
