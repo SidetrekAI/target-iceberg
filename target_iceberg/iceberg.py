@@ -60,6 +60,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
             # fields.append(pa.field("empty", pa.list_(pa.null())))
             # fields.append(pa.field("empty", pa.struct(pa.null())))
             #fields.append(pa.field("empty", pa.string()))
+            fields.append(pa.field("empty", pa.struct([])))
             self.logger.info(f"*****Fields: {fields}*****")
             return fields
             # return None
