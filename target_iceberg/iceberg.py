@@ -160,6 +160,8 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
 #     return new_fields, field_id
 
 def assign_pyarrow_field_ids(self, pa_schema: PyarrowSchema, field_id: int = 0) -> Tuple[PyarrowSchema, int]:
+    self.logger.info(f"Type of pa_schema: {type(pa_schema)}")
+    self.logger.info(f"Value of pa_schema: {pa_schema}")
     new_fields = []
     for field in pa_schema:
         field_id += 1
