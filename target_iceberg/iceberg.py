@@ -72,10 +72,10 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
 
                 if not prop:
                     # Determine key and value types for dictionary
-                    key_type = pa.string()  # Default to string if not specified
+                    int_type = pa.int64()  # Default to string if not specified
                     value_type = pa.string()  # Default to string if not specified
 
-                    fields.append(pa.field(key, pa.dictionary(key_type, value_type), nullable=nullable))
+                    fields.append(pa.field(key, pa.dictionary(int_type, value_type), nullable=nullable))
                 else:
                     inner_fields = get_pyarrow_schema_from_object(prop, level + 1)
                     if not inner_fields:
