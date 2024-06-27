@@ -77,8 +77,11 @@ class IcebergSink(BatchSink):
         singer_schema = self.schema
         pa_schema = singer_to_pyarrow_schema(self, singer_schema)
 
-        # Log the records
-        self.logger.info(f"Records: {context['records']}")
+        # Log the first record
+        if context["records"]:
+            self.logger.info(f"First record: {context['records'][0]}")
+        else:
+            self.logger.info("No records found in the batch")
 
         try:
             df = pa.Table.from_pylist(context["records"], schema=pa_schema)
