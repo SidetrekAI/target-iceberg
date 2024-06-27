@@ -71,7 +71,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                 prop = val.get("properties")
 
                 if not prop:
-                    fields.append(pa.field(key, pa.string(), nullable=nullable))
+                    fields.append(pa.field(key, pa.dictionary(Any, Any), nullable=nullable))
                 else:
                     inner_fields = get_pyarrow_schema_from_object(prop, level + 1)
                     if not inner_fields:
