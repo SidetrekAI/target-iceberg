@@ -1,6 +1,7 @@
 """Iceberg target sink class, which handles writing streams."""
 
 from __future__ import annotations
+import pandas as pd
 import os
 from typing import cast, Any
 from singer_sdk.sinks import BatchSink
@@ -76,25 +77,41 @@ class IcebergSink(BatchSink):
             # NoSuchNamespaceError is also raised for some reason (probably a bug - but needs to be handled anyway)
             self.logger.info(f"Namespace '{ns_name}' already exists")
 
-        # Create pyarrow df
-        singer_schema = self.schema
-        pa_schema = singer_to_pyarrow_schema(self, singer_schema)
-        df = pa.Table.from_pylist(context["records"], schema=pa_schema)
+        # Convert records to a Pandas DataFrame
+        df_pandas = pd.DataFrame(context["records"])
+
+        # Create a PyArrow Table from the DataFrame, inferring the schema
+        df_pyarrow = pa.Table.from_pandas(df_pandas, preserve_index=False)
+
+        # # Create pyarrow df
+        # singer_schema = self.schema
+        # pa_schema = singer_to_pyarrow_schema(self, singer_schema)
+        # df = pa.Table.from_pylist(context["records"], schema=pa_schema)
 
         # Create a table if it doesn't exist
         table_name = self.stream_name
         table_id = f"{ns_name}.{table_name}"
 
+        # try:
+        #     table = catalog.load_table(table_id)
+        #     self.logger.info(f"Table '{table_id}' loaded")
+
+        #     # TODO: Handle schema evolution - compare existing table schema with singer schema (converted to pyiceberg schema)
+        # except NoSuchTableError as e:
+        #     # Table doesn't exist, so create it
+        #     pyiceberg_schema = pyarrow_to_pyiceberg_schema(self, pa_schema)
+        #     table = catalog.create_table(table_id, schema=pyiceberg_schema)
+        #     self.logger.info(f"Table '{table_id}' created")
+
+        # # Add data to the table
+        # table.append(df)
+
         try:
             table = catalog.load_table(table_id)
-            self.logger.info(f"Table '{table_id}' loaded")
-
-            # TODO: Handle schema evolution - compare existing table schema with singer schema (converted to pyiceberg schema)
-        except NoSuchTableError as e:
-            # Table doesn't exist, so create it
-            pyiceberg_schema = pyarrow_to_pyiceberg_schema(self, pa_schema)
+        except NoSuchTableError:
+            # Create table with schema inferred from PyArrow Table
+            pyiceberg_schema = pyarrow_to_pyiceberg_schema(self, df_pyarrow.schema)
             table = catalog.create_table(table_id, schema=pyiceberg_schema)
-            self.logger.info(f"Table '{table_id}' created")
 
-        # Add data to the table
-        table.append(df)
+        # Append data to the table
+        table.append(df_pyarrow)
