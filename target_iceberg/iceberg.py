@@ -63,7 +63,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         fields = []
 
         if not properties:
-            fields.append(pa.field(key, pa.null(), nullable=False))
+            # fields.append(pa.field('unknown', pa.null(), nullable=False))
             return fields
 
         for key, val in properties.items():
