@@ -76,8 +76,8 @@ class IcebergSink(BatchSink):
         except (NamespaceAlreadyExistsError, NoSuchNamespaceError):
             # NoSuchNamespaceError is also raised for some reason (probably a bug - but needs to be handled anyway)
             self.logger.info(f"Namespace '{ns_name}' already exists")
-
-        self.logger.info(f"********* context[records]: {context["records"]} *********")
+        conrecords = context["records"]
+        self.logger.info(f"********* context[records]: {conrecords} *********")
 
         # Convert records to a Pandas DataFrame
         df_pandas = pd.DataFrame(context["records"])
