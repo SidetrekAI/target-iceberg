@@ -98,3 +98,4 @@ class IcebergSink(BatchSink):
 
         # Add data to the table
         table.append(df)
+

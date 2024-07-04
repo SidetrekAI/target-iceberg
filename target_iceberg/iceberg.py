@@ -5,7 +5,6 @@ from pyiceberg.schema import Schema as PyicebergSchema
 from pyiceberg.io.pyarrow import pyarrow_to_schema
 
 
-# Borrowed from https://github.com/crowemi/target-s3/blob/main/target_s3/formats/format_parquet.py
 def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> PyarrowSchema:
     """Convert singer tap json schema to pyarrow schema."""
 
@@ -164,5 +163,6 @@ def pyarrow_to_pyiceberg_schema(self, pa_schema: PyarrowSchema) -> PyicebergSche
     """Convert pyarrow schema to pyiceberg schema."""
     pyiceberg_schema = pyarrow_to_schema(pa_schema)
     return pyiceberg_schema
+
 
 
