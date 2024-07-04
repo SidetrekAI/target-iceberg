@@ -165,3 +165,4 @@ def pyarrow_to_pyiceberg_schema(self, pa_schema: PyarrowSchema) -> PyicebergSche
     pyiceberg_schema = pyarrow_to_schema(pa_schema)
     return pyiceberg_schema
 
+
