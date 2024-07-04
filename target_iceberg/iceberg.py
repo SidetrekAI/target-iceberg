@@ -8,6 +8,8 @@ from pyiceberg.io.pyarrow import pyarrow_to_schema
 def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> PyarrowSchema:
     """Convert singer tap json schema to pyarrow schema."""
 
+    self.logger.info(f"********** singer_schema: {singer_schema} **********")
+
     def process_anyof_schema(anyOf: List) -> Tuple[List, Union[str, None]]:
         """This function takes in original array of anyOf's schema detected
         and reduces it to the detected schema, based on rules, right now
@@ -62,8 +64,9 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         """
         fields = []
 
+
         if not properties:
-            # fields.append(pa.field('unknown', pa.string(), nullable=True))
+            self.logger.info(f"********** if not properties, this is fields: {fields}, at this level: {level} **********")
             return fields
 
         for key, val in properties.items():
@@ -79,6 +82,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
             if "object" in type:
                 nullable = "null" in type
                 prop = val.get("properties")
+                self.logger.info(f"********** if object in type this is prop or val.get(properties): {prop} at level: {level} **********")
                 inner_fields = get_pyarrow_schema_from_object(properties=prop, level=level + 1)
                 if not inner_fields:
                     self.logger.warn(
