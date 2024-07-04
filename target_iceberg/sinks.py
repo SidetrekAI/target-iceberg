@@ -83,6 +83,16 @@ class IcebergSink(BatchSink):
         # Create a PyArrow Table from the DataFrame, inferring the schema
         df_pyarrow = pa.Table.from_pandas(df_pandas, preserve_index=False)
 
+        # Add field IDs to the PyArrow schema
+        field_ids = list(range(1, len(df_pyarrow.schema) + 1))
+        fields_with_ids = [
+            pa.field(field.name, field.type, field.nullable, metadata={"field_id": str(field_id)})
+            for field, field_id in zip(df_pyarrow.schema, field_ids)
+        ]
+        schema_with_ids = pa.schema(fields_with_ids)
+
+        df_pyarrow = df_pyarrow.cast(schema_with_ids)
+
         # # Create pyarrow df
         # singer_schema = self.schema
         # pa_schema = singer_to_pyarrow_schema(self, singer_schema)
