@@ -77,8 +77,12 @@ class IcebergSink(BatchSink):
             # NoSuchNamespaceError is also raised for some reason (probably a bug - but needs to be handled anyway)
             self.logger.info(f"Namespace '{ns_name}' already exists")
 
+        self.logger.info(f"********* context[records]: {context["records"]} *********")
+
         # Convert records to a Pandas DataFrame
         df_pandas = pd.DataFrame(context["records"])
+
+        self.logger.info(f"********* df_pandas.head(1): {df_pandas.head(1)} *********")
 
         # Create a PyArrow Table from the DataFrame, inferring the schema
         df_pyarrow = pa.Table.from_pandas(df_pandas, preserve_index=False)
@@ -120,6 +124,7 @@ class IcebergSink(BatchSink):
             table = catalog.load_table(table_id)
         except NoSuchTableError:
             # Create table with schema inferred from PyArrow Table
+            self.logger.info(f"********* PyArrow Schema: '{df_pyarrow.schema}' *********")
             pyiceberg_schema = pyarrow_to_pyiceberg_schema(self, df_pyarrow.schema)
             table = catalog.create_table(table_id, schema=pyiceberg_schema)
 
