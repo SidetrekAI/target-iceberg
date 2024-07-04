@@ -67,7 +67,6 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
 
         if not properties:
             self.logger.info(f"********** if not properties, this is fields: {fields}, at this level: {level} **********")
-            # fields.append(pa.field("unknown", pa.float64(), nullable=True))
             return fields
 
         for key, val in properties.items():
@@ -180,10 +179,12 @@ def pyarrow_to_pyiceberg_schema(self, pa_schema: PyarrowSchema) -> PyicebergSche
             field_type = pa.string()  # Choose an appropriate type to cast to
         else:
             field_type = field.type
-        fields.append((field.name, field_type))
+        fields.append((field.name, str(field_type)))  # Ensure field type is converted to string if necessary
     
+    # Construct PyicebergSchema object with fields
     pyiceberg_schema = PyicebergSchema(fields)
     return pyiceberg_schema
+
 
 
 
