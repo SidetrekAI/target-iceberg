@@ -173,7 +173,16 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
 
 def pyarrow_to_pyiceberg_schema(self, pa_schema: PyarrowSchema) -> PyicebergSchema:
     """Convert pyarrow schema to pyiceberg schema."""
-    pyiceberg_schema = pyarrow_to_schema(pa_schema)
+    fields = []
+    for field in pa_schema:
+        if field.type == pa.null():
+            self.logger.info(f"Converting null type field '{field.name}' to string")
+            field_type = pa.string()  # Choose an appropriate type to cast to
+        else:
+            field_type = field.type
+        fields.append((field.name, field_type))
+    
+    pyiceberg_schema = PyicebergSchema(fields)
     return pyiceberg_schema
 
 
