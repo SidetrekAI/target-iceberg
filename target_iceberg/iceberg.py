@@ -62,6 +62,11 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         """
         fields = []
 
+        if not properties:
+            nullable = "null" in type
+            fields.append(pa.field(key, pa.null(), nullable=nullable))
+            return fields
+
         for key, val in properties.items():
             if "type" in val.keys():
                 type = val["type"]
