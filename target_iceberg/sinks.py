@@ -94,10 +94,10 @@ class IcebergSink(BatchSink):
             for field, field_id in zip(schema, field_ids):
                 if pa.types.is_struct(field.type):
                     # Recursively add field_ids to the nested struct
-                    nested_schema_with_ids, next_id = add_field_ids(field.type, start_id=field_id)
+                    nested_schema_with_ids, next_id = add_field_ids(field.type)
                     field_with_id = pa.field(
                         field.name,
-                        nested_schema_with_ids,
+                        pa.struct(nested_schema_with_ids),
                         field.nullable,
                         metadata={"field_id": str(field_id)}
                     )
@@ -110,7 +110,7 @@ class IcebergSink(BatchSink):
                     )
                 fields_with_ids.append(field_with_id)
             
-            return pa.schema(fields_with_ids), field_ids[-1] + 1
+            return fields_with_ids
 
         # Add field IDs to the PyArrow schema
         # field_ids = list(range(1, len(df_pyarrow.schema) + 1))
@@ -120,7 +120,7 @@ class IcebergSink(BatchSink):
         # ]
         # schema_with_ids = pa.schema(fields_with_ids)
 
-        schema_with_ids, _ = add_field_ids(df_pyarrow.schema)
+        schema_with_ids = pa.schema(add_field_ids(df_pyarrow.schema))
 
         df_pyarrow = df_pyarrow.cast(schema_with_ids)
 
