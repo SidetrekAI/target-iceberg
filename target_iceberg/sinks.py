@@ -87,13 +87,40 @@ class IcebergSink(BatchSink):
         # Create a PyArrow Table from the DataFrame, inferring the schema
         df_pyarrow = pa.Table.from_pandas(df_pandas, preserve_index=False)
 
+        def add_field_ids(schema, start_id=1):
+            field_ids = list(range(start_id, start_id + len(schema)))
+            fields_with_ids = []
+            
+            for field, field_id in zip(schema, field_ids):
+                if pa.types.is_struct(field.type):
+                    # Recursively add field_ids to the nested struct
+                    nested_schema_with_ids, next_id = add_field_ids(field.type, start_id=field_id)
+                    field_with_id = pa.field(
+                        field.name,
+                        nested_schema_with_ids,
+                        field.nullable,
+                        metadata={"field_id": str(field_id)}
+                    )
+                else:
+                    field_with_id = pa.field(
+                        field.name,
+                        field.type,
+                        field.nullable,
+                        metadata={"field_id": str(field_id)}
+                    )
+                fields_with_ids.append(field_with_id)
+            
+            return pa.schema(fields_with_ids), field_ids[-1] + 1
+
         # Add field IDs to the PyArrow schema
-        field_ids = list(range(1, len(df_pyarrow.schema) + 1))
-        fields_with_ids = [
-            pa.field(field.name, field.type, field.nullable, metadata={"field_id": str(field_id)})
-            for field, field_id in zip(df_pyarrow.schema, field_ids)
-        ]
-        schema_with_ids = pa.schema(fields_with_ids)
+        # field_ids = list(range(1, len(df_pyarrow.schema) + 1))
+        # fields_with_ids = [
+        #     pa.field(field.name, field.type, field.nullable, metadata={"field_id": str(field_id)})
+        #     for field, field_id in zip(df_pyarrow.schema, field_ids)
+        # ]
+        # schema_with_ids = pa.schema(fields_with_ids)
+
+        schema_with_ids, _ = add_field_ids(df_pyarrow.schema)
 
         df_pyarrow = df_pyarrow.cast(schema_with_ids)
 
