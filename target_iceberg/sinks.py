@@ -79,15 +79,6 @@ class IcebergSink(BatchSink):
         # Create pyarrow df
         singer_schema = self.schema
         pa_schema = singer_to_pyarrow_schema(self, singer_schema)
-
-        # Convert null type columns to string to avoid Parquet writing issues
-        for field in pa_schema:
-            if field.type == pa.null():
-                self.logger.info(f"Casting null type field '{field.name}' to string")
-                field_type = pa.string()  # Choose an appropriate type to cast to
-                field_index = pa_schema.get_field_index(field.name)
-                pa_schema = pa_schema.set(field_index, field_type)
-
         df = pa.Table.from_pylist(context["records"], schema=pa_schema)
 
         # Create a table if it doesn't exist

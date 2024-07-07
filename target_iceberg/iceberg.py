@@ -5,10 +5,9 @@ from pyiceberg.schema import Schema as PyicebergSchema
 from pyiceberg.io.pyarrow import pyarrow_to_schema
 
 
+# Borrowed from https://github.com/crowemi/target-s3/blob/main/target_s3/formats/format_parquet.py
 def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> PyarrowSchema:
     """Convert singer tap json schema to pyarrow schema."""
-
-    self.logger.info(f"********** singer_schema: {singer_schema} **********")
 
     def process_anyof_schema(anyOf: List) -> Tuple[List, Union[str, None]]:
         """This function takes in original array of anyOf's schema detected
@@ -64,11 +63,6 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         """
         fields = []
 
-
-        if not properties:
-            self.logger.info(f"********** if not properties, this is fields: {fields}, at this level: {level} **********")
-            return fields
-
         for key, val in properties.items():
             if "type" in val.keys():
                 type = val["type"]
@@ -79,20 +73,7 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                 self.logger.warning("type information not given")
                 type = ["string", "null"]
 
-            if "object" in type:
-                nullable = "null" in type
-                prop = val.get("properties")
-                self.logger.info(f"********** if object in type this is prop or val.get(properties): {prop} at level: {level} **********")
-                inner_fields = get_pyarrow_schema_from_object(properties=prop, level=level + 1)
-                if not inner_fields:
-                    self.logger.warn(
-                        f"""key: {key} has no fields defined, this may cause
-                            saving parquet failure as parquet doesn't support
-                            empty/null complex types [array, structs] """
-                    )
-                fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
-
-            elif "integer" in type:
+            if "integer" in type:
                 nullable = "null" in type
                 fields.append(pa.field(key, pa.int64(), nullable=nullable))
             elif "number" in type:
@@ -133,9 +114,18 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                             exact item types for the list, if not null."""
                     )
                     fields.append(pa.field(key, pa.list_(pa.null()), nullable=nullable))
-            else:
+            elif "object" in type:
                 nullable = "null" in type
-                fields.append(pa.field(key, pa.null(), nullable=nullable))
+                prop = val.get("properties")
+                inner_fields = get_pyarrow_schema_from_object(properties=prop, level=level + 1)
+                if not inner_fields:
+                    self.logger.warn(
+                        f"""key: {key} has no fields defined, this may cause
+                            saving parquet failure as parquet doesn't support
+                            empty/null complex types [array, structs] """
+                    )
+                fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
+
         return fields
 
     properties = singer_schema["properties"]
@@ -172,17 +162,7 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
 
 def pyarrow_to_pyiceberg_schema(self, pa_schema: PyarrowSchema) -> PyicebergSchema:
     """Convert pyarrow schema to pyiceberg schema."""
-    fields = []
-    for field in pa_schema:
-        if field.type == pa.null():
-            self.logger.info(f"Converting null type field '{field.name}' to string")
-            field_type = pa.string()  # Choose an appropriate type to cast to
-        else:
-            field_type = field.type
-        fields.append((field.name, str(field_type)))  # Ensure field type is converted to string if necessary
-    
-    # Construct PyicebergSchema object with fields
-    pyiceberg_schema = PyicebergSchema(fields)
+    pyiceberg_schema = pyarrow_to_schema(pa_schema)
     return pyiceberg_schema
 
 
