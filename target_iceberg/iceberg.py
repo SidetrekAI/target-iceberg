@@ -10,7 +10,6 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
     """Convert singer tap json schema to pyarrow schema."""
 
     def process_anyof_schema(anyOf: List) -> Tuple[List[str], Union[str, None]]:
-        """Processes 'anyOf' schema entries to determine the applicable types and formats."""
         types, formats = set(), set()
         for val in anyOf:
             typ = val.get("type", [])
@@ -25,7 +24,6 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         return ret_type, formats.pop() if formats else None
 
     def get_pyarrow_schema_from_array(items: dict, level: int = 0) -> pa.DataType:
-        """Returns the PyArrow schema for array items."""
         types, format = process_anyof_schema(items.get('anyOf', [])) if 'anyOf' in items else (items.get('type', []), None)
         
         type_mapping = {
@@ -42,18 +40,16 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         return pa.null()
 
     def get_pyarrow_schema_from_object(properties: dict, level: int = 0) -> List[pa.Field]:
-        """Generates PyArrow fields for an object."""
         fields = []
         for key, val in properties.items():
             types, format = process_anyof_schema(val.get('anyOf', [])) if 'anyOf' in val else (val.get('type', []), val.get('format'))
             nullable = 'null' in types
             field_type = determine_field_type(key, types, format, val, level)
             if field_type:
-                fields.append(pa.field(key, field_type, nullable=nullable))
+                fields.append(pa.field(key, field_type, nullable=nullable, metadata=val.get('metadata', {})))
         return fields
 
     def determine_field_type(key: str, types: List[str], format: str, val: dict, level: int) -> pa.DataType:
-        """Determines the PyArrow field type based on JSON schema types."""
         if "object" in types:
             return pa.struct(get_pyarrow_schema_from_object(val.get('properties', {}), level + 1))
         elif "array" in types:
@@ -85,10 +81,9 @@ def assign_pyarrow_field_ids(pa_fields: List[pa.Field], field_id: int = 0) -> Tu
             new_fields.append(pa.field(field.name, pa.struct(nested_pa_fields), nullable=field.nullable, metadata=field.metadata))
         else:
             field_id += 1
-            field_with_metadata = field.with_metadata({"PARQUET:field_id": str(field_id)})
+            field_with_metadata = field.with_metadata({**field.metadata, "PARQUET:field_id": str(field_id)})
             new_fields.append(field_with_metadata)
     return new_fields, field_id
-
 
 
 def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
