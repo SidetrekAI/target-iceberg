@@ -76,9 +76,11 @@ def assign_pyarrow_field_ids(pa_fields: List[pa.Field], field_id: int = 0) -> Tu
     """Assigns unique field IDs to the PyArrow schema fields."""
     new_fields = []
     for field in pa_fields:
-        if isinstance(field.type, pa.StructType):
-            nested_pa_fields, field_id = assign_pyarrow_field_ids([field.type.field(i) for i in range(field.type.num_fields)], field_id)
-            new_fields.append(pa.field(field.name, pa.struct(nested_pa_fields), nullable=field.nullable, metadata=field.metadata))
+        nested_pa_fields, field_id = assign_pyarrow_field_ids([field.type.field(i) for i in range(field.type.num_fields)], field_id)
+        new_fields.append(pa.field(field.name, pa.struct(nested_pa_fields), nullable=field.nullable, metadata=field.metadata))
+        # if isinstance(field.type, pa.StructType):
+        #     nested_pa_fields, field_id = assign_pyarrow_field_ids([field.type.field(i) for i in range(field.type.num_fields)], field_id)
+        #     new_fields.append(pa.field(field.name, pa.struct(nested_pa_fields), nullable=field.nullable, metadata=field.metadata))
         # else:
         #     field_id += 1
         #     field_with_metadata = field.with_metadata({**field.metadata, "PARQUET:field_id": str(field_id)})
