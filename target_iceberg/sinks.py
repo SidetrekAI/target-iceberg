@@ -78,6 +78,7 @@ class IcebergSink(BatchSink):
 
         # Create pyarrow df
         singer_schema = self.schema
+        self.logger.info(f"**********Schema: {singer_schema}")
         pa_schema = singer_to_pyarrow_schema(self, singer_schema)
         df = pa.Table.from_pylist(context["records"], schema=pa_schema)
 
