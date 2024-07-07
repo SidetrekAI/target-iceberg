@@ -73,7 +73,18 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                 self.logger.warning("type information not given")
                 type = ["string", "null"]
 
-            if "integer" in type:
+            if "object" in type:
+                nullable = "null" in type
+                prop = val.get("properties")
+                inner_fields = get_pyarrow_schema_from_object(properties=prop, level=level + 1)
+                if not inner_fields:
+                    self.logger.warn(
+                        f"""key: {key} has no fields defined, this may cause
+                            saving parquet failure as parquet doesn't support
+                            empty/null complex types [array, structs] """
+                    )
+                fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
+            elif "integer" in type:
                 nullable = "null" in type
                 fields.append(pa.field(key, pa.int64(), nullable=nullable))
             elif "number" in type:
@@ -114,17 +125,6 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                             exact item types for the list, if not null."""
                     )
                     fields.append(pa.field(key, pa.list_(pa.null()), nullable=nullable))
-            elif "object" in type:
-                nullable = "null" in type
-                prop = val.get("properties")
-                inner_fields = get_pyarrow_schema_from_object(properties=prop, level=level + 1)
-                if not inner_fields:
-                    self.logger.warn(
-                        f"""key: {key} has no fields defined, this may cause
-                            saving parquet failure as parquet doesn't support
-                            empty/null complex types [array, structs] """
-                    )
-                fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
 
         return fields
 
