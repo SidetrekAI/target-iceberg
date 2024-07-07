@@ -150,7 +150,7 @@ def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
     self.logger.info(f"********** pa_schema: {pa_schema} **********")
     
     # Extract fields from pa_schema
-    pa_fields = pa_schema.fields
+    pa_fields = pa_schema
     
     # Pass pa_fields to assign_pyarrow_field_ids
     pa_fields_with_field_ids, _ = assign_pyarrow_field_ids(pa_fields)
