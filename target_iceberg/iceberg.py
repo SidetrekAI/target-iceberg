@@ -9,136 +9,66 @@ from pyiceberg.io.pyarrow import pyarrow_to_schema
 def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> PyarrowSchema:
     """Convert singer tap json schema to pyarrow schema."""
 
-    def process_anyof_schema(anyOf: List) -> Tuple[List, Union[str, None]]:
-        """This function takes in original array of anyOf's schema detected
-        and reduces it to the detected schema, based on rules, right now
-        just detects whether it is string or not.
-        """
-        types, formats = [], []
+    def process_anyof_schema(anyOf: List) -> Tuple[List[str], Union[str, None]]:
+        """Processes 'anyOf' schema entries to determine the applicable types and formats."""
+        types, formats = set(), set()
         for val in anyOf:
-            typ = val.get("type")
-            if val.get("format"):
-                formats.append(val["format"])
-            if type(typ) is not list:
-                types.append(typ)
+            typ = val.get("type", [])
+            formats.update(val.get("format", []))
+            if isinstance(typ, list):
+                types.update(typ)
             else:
-                types.extend(typ)
-        types = list(set(types))
-        formats = list(set(formats))
-        ret_type = []
-        if "string" in types:
-            ret_type.append("string")
-        if "null" in types:
-            ret_type.append("null")
-        return ret_type, formats[0] if formats else None
+                types.add(typ)
+        ret_type = ['string'] if 'string' in types else list(types)
+        if 'null' in types:
+            ret_type.append('null')
+        return ret_type, formats.pop() if formats else None
 
-    def get_pyarrow_schema_from_array(items: dict, level: int = 0):
-        type = cast(list[Any], items.get("type"))
-        any_of_types = items.get("anyOf")
+    def get_pyarrow_schema_from_array(items: dict, level: int = 0) -> pa.DataType:
+        """Returns the PyArrow schema for array items."""
+        types, format = process_anyof_schema(items.get('anyOf', [])) if 'anyOf' in items else (items.get('type', []), None)
+        
+        type_mapping = {
+            "string": pa.string(),
+            "integer": pa.int64(),
+            "number": pa.float64(),
+            "boolean": pa.bool_(),
+            "array": pa.list_(get_pyarrow_schema_from_array(items.get("items", {}), level)),
+            "object": pa.struct(get_pyarrow_schema_from_object(items.get("properties", {}), level + 1))
+        }
+        for typ in types:
+            if typ in type_mapping:
+                return type_mapping[typ]
+        return pa.null()
 
-        if any_of_types:
-            self.logger.info("array with anyof type schema detected.")
-            type, _ = process_anyof_schema(anyOf=any_of_types)
-
-        if "string" in type:
-            return pa.string()
-        elif "integer" in type:
-            return pa.int64()
-        elif "number" in type:
-            return pa.float64()
-        elif "boolean" in type:
-            return pa.bool_()
-        elif "array" in type:
-            subitems = cast(dict, items.get("items"))
-            return pa.list_(get_pyarrow_schema_from_array(items=subitems, level=level))
-        elif "object" in type:
-            subproperties = cast(dict, items.get("properties"))
-            return pa.struct(get_pyarrow_schema_from_object(properties=subproperties, level=level + 1))
-        else:
-            return pa.null()
-
-    def get_pyarrow_schema_from_object(properties: dict, level: int = 0):
-        """
-        Returns schema for an object.
-        """
-        self.logger.info(f"********** properties: {properties} at level: {level}**********")
-
+    def get_pyarrow_schema_from_object(properties: dict, level: int = 0) -> List[pa.Field]:
+        """Generates PyArrow fields for an object."""
         fields = []
-
-        if not properties:
-            self.logger.warning(f"**********No properties found for the object at level: {level}**********")
-            #{'unknown': {'type': ['string', 'null']}}
-            #fields.append(pa.field('unknown', pa.string(), nullable=True))
-            #fields.append(pa.field('null', pa.null(), nullable=True))
-            #fields.append(pa.field(key, pa.struct(inner_fields), nullable=True))
-            return fields
-
         for key, val in properties.items():
-            if "type" in val.keys():
-                type = val["type"]
-                format = val.get("format")
-            elif "anyOf" in val.keys():
-                type, format = process_anyof_schema(val["anyOf"])
-            else:
-                self.logger.warning("type information not given")
-                type = ["string", "null"]
-
-            if "object" in type:
-                nullable = "null" in type
-                prop = val.get("properties")
-                inner_fields = get_pyarrow_schema_from_object(properties=prop, level=level + 1)
-                if not inner_fields:
-                    self.logger.warn(
-                        f"""key: {key} has no fields defined, this may cause
-                            saving parquet failure as parquet doesn't support
-                            empty/null complex types [array, structs] """
-                    )
-                    fields.append(pa.field(str(key), pa.string(), nullable=nullable))
-                else:
-                    fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
-            elif "integer" in type:
-                nullable = "null" in type
-                fields.append(pa.field(key, pa.int64(), nullable=nullable))
-            elif "number" in type:
-                nullable = "null" in type
-                fields.append(pa.field(key, pa.float64(), nullable=nullable))
-            elif "boolean" in type:
-                nullable = "null" in type
-                fields.append(pa.field(key, pa.bool_(), nullable=nullable))
-            elif "string" in type:
-                nullable = "null" in type
-                if format and level == 0:
-                    # this is done to handle explicit datetime conversion
-                    # which happens only at level 1 of a record
-                    if format == "date":
-                        fields.append(pa.field(key, pa.date64(), nullable=nullable))
-                    elif format == "time":
-                        fields.append(pa.field(key, pa.time64(), nullable=nullable))
-                    else:
-                        fields.append(pa.field(key, pa.timestamp("us", tz="UTC"), nullable=nullable))
-                else:
-                    fields.append(pa.field(key, pa.string(), nullable=nullable))
-            elif "array" in type:
-                nullable = "null" in type
-                items = val.get("items")
-                if items:
-                    item_type = get_pyarrow_schema_from_array(items=items, level=level)
-                    if item_type == pa.null():
-                        self.logger.warn(
-                            f"""key: {key} is defined as list of null, while this would be
-                                correct for list of all null but it is better to define
-                                exact item types for the list, if not null."""
-                        )
-                    fields.append(pa.field(key, pa.list_(item_type), nullable=nullable))
-                else:
-                    self.logger.warn(
-                        f"""key: {key} is defined as list of null, while this would be
-                            correct for list of all null but it is better to define
-                            exact item types for the list, if not null."""
-                    )
-                    fields.append(pa.field(key, pa.list_(pa.null()), nullable=nullable))
-        self.logger.info(f"********** fields: {fields} at level: {level}**********")
+            types, format = process_anyof_schema(val.get('anyOf', [])) if 'anyOf' in val else (val.get('type', []), val.get('format'))
+            nullable = 'null' in types
+            field_type = determine_field_type(key, types, format, val, level)
+            if field_type:
+                fields.append(pa.field(key, field_type, nullable=nullable))
         return fields
+
+    def determine_field_type(key: str, types: List[str], format: str, val: dict, level: int) -> pa.DataType:
+        """Determines the PyArrow field type based on JSON schema types."""
+        if "object" in types:
+            return pa.struct(get_pyarrow_schema_from_object(val.get('properties', {}), level + 1))
+        elif "array" in types:
+            return pa.list_(get_pyarrow_schema_from_array(val.get('items', {}), level))
+        elif "integer" in types:
+            return pa.int64()
+        elif "number" in types:
+            return pa.float64()
+        elif "boolean" in types:
+            return pa.bool_()
+        elif "string" in types:
+            if format and level == 0:
+                return pa.timestamp('us', tz='UTC') if format not in {"date", "time"} else pa.date64() if format == "date" else pa.time64()
+            return pa.string()
+        return pa.null()
 
     properties = singer_schema["properties"]
     pyarrow_schema = pa.schema(get_pyarrow_schema_from_object(properties=properties))
@@ -146,29 +76,25 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
     return pyarrow_schema
 
 
-def assign_pyarrow_field_ids(self, pa_fields: list[PyarrowField], field_id: int = 0) -> Tuple[list[PyarrowField], int]:
-    """Assign field ids to the schema."""
+def assign_pyarrow_field_ids(pa_fields: List[pa.Field], field_id: int = 0) -> Tuple[List[pa.Field], int]:
+    """Assigns unique field IDs to the PyArrow schema fields."""
     new_fields = []
     for field in pa_fields:
         if isinstance(field.type, pa.StructType):
-            field_indices = list(range(field.type.num_fields))
-            struct_fields = [field.type.field(field_i) for field_i in field_indices]
-            nested_pa_fields, field_id = assign_pyarrow_field_ids(self, struct_fields, field_id)
-            new_fields.append(
-                pa.field(field.name, pa.struct(nested_pa_fields), nullable=field.nullable, metadata=field.metadata)
-            )
+            nested_pa_fields, field_id = assign_pyarrow_field_ids([field.type.field(i) for i in range(field.type.num_fields)], field_id)
+            new_fields.append(pa.field(field.name, pa.struct(nested_pa_fields), nullable=field.nullable, metadata=field.metadata))
         else:
             field_id += 1
-            field_with_metadata = field.with_metadata({"PARQUET:field_id": f"{field_id}"})
+            field_with_metadata = field.with_metadata({"PARQUET:field_id": str(field_id)})
             new_fields.append(field_with_metadata)
-    
     return new_fields, field_id
 
 
+
 def singer_to_pyarrow_schema(self, singer_schema: dict) -> PyarrowSchema:
-    """Convert singer tap json schema to pyarrow schema."""
+    """Converts a Singer JSON schema to a PyArrow schema with field IDs."""
     pa_schema = singer_to_pyarrow_schema_without_field_ids(self, singer_schema)
-    pa_fields_with_field_ids, _ = assign_pyarrow_field_ids(self, pa_schema)
+    pa_fields_with_field_ids, _ = assign_pyarrow_field_ids(pa_schema)
     return pa.schema(pa_fields_with_field_ids)
 
 
