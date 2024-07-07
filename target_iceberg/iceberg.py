@@ -65,12 +65,12 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
 
         fields = []
 
-        # if not properties:
-        #     self.logger.warning(f"**********No properties found for the object at level: {level}**********")
-        #     #{'unknown': {'type': ['string', 'null']}}
-        #     #fields.append(pa.field('unknown', pa.string(), nullable=True))
-        #     #fields.append(pa.field(key, pa.struct(inner_fields), nullable=True))
-        #     return fields
+        if not properties:
+            self.logger.warning(f"**********No properties found for the object at level: {level}**********")
+            #{'unknown': {'type': ['string', 'null']}}
+            #fields.append(pa.field('unknown', pa.string(), nullable=True))
+            #fields.append(pa.field(key, pa.struct(inner_fields), nullable=True))
+            return fields
 
         for key, val in properties.items():
             if "type" in val.keys():
