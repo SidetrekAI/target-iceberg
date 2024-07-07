@@ -137,6 +137,9 @@ def assign_pyarrow_field_ids(pa_fields: List[pa.Field], field_id: int = 0) -> Tu
             new_fields.append(pa.field(field.name, pa.struct(nested_pa_fields), nullable=field.nullable, metadata=field.metadata))
         else:
             field_id += 1
+            # Ensure field.metadata is initialized as an empty dict if it's None
+            if field.metadata is None:
+                field.metadata = {}
             field_with_metadata = field.with_metadata({**field.metadata, "PARQUET:field_id": str(field_id)})
             new_fields.append(field_with_metadata)
     return new_fields, field_id
