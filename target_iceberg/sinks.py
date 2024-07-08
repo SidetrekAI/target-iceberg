@@ -88,7 +88,10 @@ class IcebergSink(BatchSink):
         for record in records:
             for key, value in record.items():
                 if isinstance(value, dict):
-                    record[key] = json.dumps(value)
+                    if not value:  # Check if the dictionary is empty
+                        record[key] = None  # Replace empty dictionary with None or an appropriate sentinel value
+                    else:
+                        record[key] = json.dumps(value)  # Serialize non-empty dictionaries
                     self.logger.info(f"Serialized {key}: {record[key]}")
 
         self.logger.info(f"Serialized Records: {records}")
