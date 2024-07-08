@@ -81,6 +81,7 @@ class IcebergSink(BatchSink):
         singer_schema = self.schema
         self.logger.info(f"**********Schema: {singer_schema}")
         pa_schema = singer_to_pyarrow_schema(self, singer_schema)
+
         records = context["records"]
         for record in records:
             for key, value in record.items():
