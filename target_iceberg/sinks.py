@@ -84,10 +84,13 @@ class IcebergSink(BatchSink):
 
         records = context["records"]
         self.logger.info(f"Original Records: {records}")
+        # Ensure all dictionary fields are serialized to JSON strings
         for record in records:
             for key, value in record.items():
                 if isinstance(value, dict):
                     record[key] = json.dumps(value)
+                    self.logger.info(f"Serialized {key}: {record[key]}")
+
         self.logger.info(f"Serialized Records: {records}")
 
         try:
