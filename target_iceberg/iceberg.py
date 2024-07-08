@@ -125,7 +125,6 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
 
     return pyarrow_schema
 
-
 def assign_pyarrow_field_ids(pa_fields: List[pa.Field], field_id: int = 0) -> Tuple[List[pa.Field], int]:
     """Assigns unique field IDs to the PyArrow schema fields."""
     new_fields = []
