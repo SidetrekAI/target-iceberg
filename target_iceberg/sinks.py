@@ -83,12 +83,19 @@ class IcebergSink(BatchSink):
         pa_schema = singer_to_pyarrow_schema(self, singer_schema)
 
         records = context["records"]
+        self.logger.info(f"Original Records: {records}")
         for record in records:
             for key, value in record.items():
                 if isinstance(value, dict):
                     record[key] = json.dumps(value)
+        self.logger.info(f"Serialized Records: {records}")
 
-        df = pa.Table.from_pylist(records, schema=pa_schema)
+        try:
+            df = pa.Table.from_pylist(records, schema=pa_schema)
+            self.logger.info(f"Created PyArrow Table: {df}")
+        except Exception as e:
+            self.logger.error(f"Error creating PyArrow Table: {e}")
+            raise
 
         # Create a table if it doesn't exist
         table_name = self.stream_name
