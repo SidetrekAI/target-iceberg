@@ -42,19 +42,15 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
         return pa.null()
 
     def get_pyarrow_schema_from_object(properties: dict, level: int = 0):
-        """
-        Returns schema for an object.
-        """
+        """Returns schema for an object."""
         self.logger.info(f"********** properties: {properties} at level: {level}**********")
 
         fields = []
 
         if not properties:
             self.logger.warning(f"**********No properties found for the object at level: {level}**********")
-            #{'unknown': {'type': ['string', 'null']}}
-            #fields.append(pa.field('unknown', pa.string(), nullable=True))
-            #fields.append(pa.field('null', pa.null(), nullable=True))
-            #fields.append(pa.field(key, pa.struct(inner_fields), nullable=True))
+            # If the properties dictionary is empty, return a string field
+            fields.append(pa.field('unknown', pa.string(), nullable=True))
             return fields
 
         for key, val in properties.items():
@@ -75,9 +71,11 @@ def singer_to_pyarrow_schema_without_field_ids(self, singer_schema: dict) -> Pya
                     self.logger.warn(
                         f"""key: {key} has no fields defined, this may cause
                             saving parquet failure as parquet doesn't support
-                            empty/null complex types [array, structs] """
+                            empty/null complex types [array, structs]. Converting to string."""
                     )
-                fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
+                    fields.append(pa.field(key, pa.string(), nullable=nullable))
+                else:
+                    fields.append(pa.field(key, pa.struct(inner_fields), nullable=nullable))
             elif "integer" in type:
                 nullable = "null" in type
                 fields.append(pa.field(key, pa.int64(), nullable=nullable))

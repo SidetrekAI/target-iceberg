@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import os
+import json
 from typing import cast, Any
 from singer_sdk.sinks import BatchSink
 import pyarrow as pa  # type: ignore
@@ -80,7 +81,13 @@ class IcebergSink(BatchSink):
         singer_schema = self.schema
         self.logger.info(f"**********Schema: {singer_schema}")
         pa_schema = singer_to_pyarrow_schema(self, singer_schema)
-        df = pa.Table.from_pylist(context["records"], schema=pa_schema)
+        records = context["records"]
+        for record in records:
+            for key, value in record.items():
+                if isinstance(value, dict):
+                    record[key] = json.dumps(value)
+
+        df = pa.Table.from_pylist(records, schema=pa_schema)
 
         # Create a table if it doesn't exist
         table_name = self.stream_name
